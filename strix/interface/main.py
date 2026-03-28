@@ -363,6 +363,48 @@ Examples:
         help="Path to a custom config file (JSON) to use instead of ~/.strix/cli-config.json",
     )
 
+    sarif_group = parser.add_argument_group("SARIF / GitHub Code Scanning")
+    sarif_group.add_argument(
+        "--sarif-output",
+        type=str,
+        metavar="FILE",
+        help="Write findings as a SARIF 2.1.0 file to FILE after the scan completes.",
+    )
+    sarif_group.add_argument(
+        "--github-token",
+        type=str,
+        metavar="TOKEN",
+        help=(
+            "GitHub token with 'security_events' write permission used to upload "
+            "SARIF results to GitHub code scanning. "
+            "Defaults to the GITHUB_TOKEN environment variable when not supplied."
+        ),
+    )
+    sarif_group.add_argument(
+        "--github-repo",
+        type=str,
+        metavar="OWNER/REPO",
+        help="Target GitHub repository for SARIF upload (e.g. 'myorg/myrepo').",
+    )
+    sarif_group.add_argument(
+        "--github-ref",
+        type=str,
+        metavar="REF",
+        help=(
+            "Git ref the SARIF results apply to (e.g. 'refs/heads/main'). "
+            "Defaults to the GITHUB_REF environment variable."
+        ),
+    )
+    sarif_group.add_argument(
+        "--github-sha",
+        type=str,
+        metavar="SHA",
+        help=(
+            "Full commit SHA the SARIF results apply to. "
+            "Defaults to the GITHUB_SHA environment variable."
+        ),
+    )
+
     args = parser.parse_args()
 
     if args.instruction and args.instruction_file:
@@ -514,6 +556,69 @@ def persist_config() -> None:
         save_current_config()
 
 
+def _handle_sarif(args: argparse.Namespace) -> None:
+    """Export findings as SARIF and/or upload them to GitHub code scanning."""
+    import os
+
+    from strix.sarif import upload_sarif_to_github
+
+    tracer = get_global_tracer()
+    if not tracer:
+        return
+
+    console = Console()
+
+    sarif_doc = tracer.to_sarif(tool_version=get_version())
+
+    if args.sarif_output:
+        import json as _json
+
+        sarif_path = Path(args.sarif_output)
+        try:
+            sarif_path.parent.mkdir(parents=True, exist_ok=True)
+            with sarif_path.open("w", encoding="utf-8") as fh:
+                _json.dump(sarif_doc, fh, indent=2, ensure_ascii=False)
+            console.print(f"[dim]SARIF report written to[/] {sarif_path}")
+        except OSError as exc:
+            console.print(f"[bold red]Failed to write SARIF file:[/] {exc}")
+
+    github_token = args.github_token or os.environ.get("GITHUB_TOKEN", "")
+    github_repo = args.github_repo or ""
+    github_ref = args.github_ref or os.environ.get("GITHUB_REF", "")
+    github_sha = args.github_sha or os.environ.get("GITHUB_SHA", "")
+
+    if not github_token or not github_repo:
+        return
+
+    if not github_ref or not github_sha:
+        console.print(
+            "[bold yellow]SARIF upload skipped:[/] "
+            "--github-ref and --github-sha (or GITHUB_REF / GITHUB_SHA env vars) are required."
+        )
+        return
+
+    console.print(f"[dim]Uploading SARIF to GitHub code scanning for[/] {github_repo}...")
+    result = upload_sarif_to_github(
+        sarif=sarif_doc,
+        github_token=github_token,
+        github_repo=github_repo,
+        ref=github_ref,
+        commit_sha=github_sha,
+    )
+
+    if result["success"]:
+        sarif_id = result.get("sarif_id", "")
+        msg = "SARIF uploaded successfully"
+        if sarif_id:
+            msg += f" (id={sarif_id})"
+        console.print(f"[bold #22c55e]{msg}[/]")
+    else:
+        console.print(
+            f"[bold red]SARIF upload failed (HTTP {result.get('status_code', '?')}):[/] "
+            f"{result.get('error', 'unknown error')}"
+        )
+
+
 def main() -> None:
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -571,6 +676,8 @@ def main() -> None:
 
     results_path = Path("strix_runs") / args.run_name
     display_completion_message(args, results_path)
+
+    _handle_sarif(args)
 
     if args.non_interactive:
         tracer = get_global_tracer()
