@@ -31,12 +31,15 @@ _SEVERITY_LEVEL: dict[str, str] = {
     "info": "note",
 }
 
-_SEVERITY_SECURITY_LEVEL: dict[str, str] = {
-    "critical": "critical",
-    "high": "high",
-    "medium": "medium",
-    "low": "low",
-    "info": "low",
+# Fallback CVSS scores used when a report has no numeric cvss value.
+# GitHub code scanning interprets security-severity as a CVSS-like numeric score
+# (0.0–10.0); it must never be an empty string or a text label.
+_SEVERITY_DEFAULT_CVSS: dict[str, str] = {
+    "critical": "9.5",
+    "high": "8.0",
+    "medium": "5.5",
+    "low": "2.0",
+    "info": "0.0",
 }
 
 
@@ -59,6 +62,15 @@ def _make_rule(report: dict[str, Any]) -> dict[str, Any]:
     if cwe:
         tags.append(cwe)
 
+    # security-severity must be a numeric string (CVSS score 0.0–10.0).
+    # Use the actual CVSS score when available; fall back to a severity-derived
+    # default so the value is never empty or a text label.
+    cvss_value = report.get("cvss")
+    if cvss_value is not None:
+        security_severity = str(float(cvss_value))
+    else:
+        security_severity = _SEVERITY_DEFAULT_CVSS.get(severity, "5.5")
+
     rule: dict[str, Any] = {
         "id": rule_id,
         "name": report.get("title", rule_id),
@@ -68,7 +80,7 @@ def _make_rule(report: dict[str, Any]) -> dict[str, Any]:
             "tags": tags,
             "precision": "high",
             "problem.severity": _SEVERITY_LEVEL.get(severity, "warning"),
-            "security-severity": str(report.get("cvss", "")),
+            "security-severity": security_severity,
         },
     }
 
@@ -165,14 +177,15 @@ def to_sarif(
                 "primaryLocationLineHash": _fingerprint(rule_id, target, 0)
             }
 
-        properties: dict[str, Any] = {
-            "security-severity": _SEVERITY_SECURITY_LEVEL.get(severity, "medium"),
-        }
+        # security-severity belongs on the rule, not on individual results.
+        # Store the raw CVSS score and CVE for informational purposes only.
+        properties: dict[str, Any] = {}
         if report.get("cvss") is not None:
             properties["cvss"] = report["cvss"]
         if report.get("cve"):
             properties["cve"] = report["cve"]
-        result["properties"] = properties
+        if properties:
+            result["properties"] = properties
 
         results.append(result)
 

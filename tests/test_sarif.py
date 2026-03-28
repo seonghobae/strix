@@ -111,6 +111,58 @@ def test_to_sarif_deduplicates_rules_for_same_cwe() -> None:
 
 
 # ---------------------------------------------------------------------------
+# security-severity must be a numeric string on the rule (GitHub requirement)
+# ---------------------------------------------------------------------------
+
+
+def test_to_sarif_rule_security_severity_uses_cvss_when_available() -> None:
+    report = _make_report(cvss=8.1, severity="high")
+    sarif = to_sarif([report])
+    rule = sarif["runs"][0]["tool"]["driver"]["rules"][0]
+    ss = rule["properties"]["security-severity"]
+    # Must be parseable as a float in [0, 10]
+    assert 0.0 <= float(ss) <= 10.0
+    assert float(ss) == 8.1
+
+
+@pytest.mark.parametrize(
+    ("severity", "expected_min", "expected_max"),
+    [
+        ("critical", 9.0, 10.0),
+        ("high", 7.0, 8.9),
+        ("medium", 4.0, 6.9),
+        ("low", 0.1, 3.9),
+        ("info", 0.0, 0.9),
+    ],
+)
+def test_to_sarif_rule_security_severity_fallback_is_numeric_and_in_range(
+    severity: str, expected_min: float, expected_max: float
+) -> None:
+    # Build a report with NO cvss score so the fallback kicks in
+    report = _make_report(severity=severity)
+    del report["cvss"]
+    sarif = to_sarif([report])
+    rule = sarif["runs"][0]["tool"]["driver"]["rules"][0]
+    ss = rule["properties"]["security-severity"]
+    value = float(ss)
+    assert expected_min <= value <= expected_max, (
+        f"security-severity {ss!r} out of expected range [{expected_min}, {expected_max}] "
+        f"for severity={severity!r}"
+    )
+
+
+def test_to_sarif_result_does_not_have_invalid_security_severity_label() -> None:
+    """Result properties must not contain a text label like 'high' for security-severity."""
+    report = _make_report(severity="critical")
+    sarif = to_sarif([report])
+    result = sarif["runs"][0]["results"][0]
+    props = result.get("properties", {})
+    # If security-severity appears on a result at all, it must be numeric
+    if "security-severity" in props:
+        float(props["security-severity"])  # raises ValueError if it's a label like "critical"
+
+
+# ---------------------------------------------------------------------------
 # Severity level mapping
 # ---------------------------------------------------------------------------
 
