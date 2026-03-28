@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - 'copilot/add-sarif-upload-support'
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
@@ -37,7 +34,7 @@ jobs:
     name: Integration – upload real SARIF to code scanning
     runs-on: ubuntu-latest
     # Only run on the PR branch where the secrets are relevant
-    if: github.ref == 'refs/heads/copilot/add-sarif-upload-support' || github.event_name == 'pull_request'
+    if: github.ref == 'refs/heads/copilot/add-sarif-upload-support'
 
     steps:
       - uses: actions/checkout@v4
