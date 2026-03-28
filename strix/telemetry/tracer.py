@@ -379,6 +379,19 @@ class Tracer:
     def get_existing_vulnerabilities(self) -> list[dict[str, Any]]:
         return list(self.vulnerability_reports)
 
+    def to_sarif(self, tool_version: str = "unknown") -> dict[str, Any]:
+        """Convert all stored vulnerability reports to a SARIF 2.1.0 document.
+
+        Args:
+            tool_version: Version string embedded in the SARIF tool driver.
+
+        Returns:
+            A dict representing a valid SARIF 2.1.0 document.
+        """
+        from strix.sarif import to_sarif as _to_sarif
+
+        return _to_sarif(self.vulnerability_reports, tool_version=tool_version)
+
     def update_scan_final_fields(
         self,
         executive_summary: str,
