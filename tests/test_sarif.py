@@ -384,3 +384,15 @@ def test_tracer_to_sarif_returns_sarif_document(tmp_path, monkeypatch) -> None:
     assert run["tool"]["driver"]["version"] == "0.8.3"
     assert len(run["results"]) == 1
     assert run["results"][0]["ruleId"] == "CWE-79"
+
+def test_to_sarif_rule_helpuri_uses_cve_when_available() -> None:
+    report = _make_report(cve="CVE-2023-12345")
+    sarif = to_sarif([report])
+    rule = sarif["runs"][0]["tool"]["driver"]["rules"][0]
+    assert rule["helpUri"] == "https://nvd.nist.gov/vuln/detail/CVE-2023-12345"
+
+def test_to_sarif_result_properties_uses_cve_when_available() -> None:
+    report = _make_report(cve="CVE-2023-12345")
+    sarif = to_sarif([report])
+    result = sarif["runs"][0]["results"][0]
+    assert result["properties"]["cve"] == "CVE-2023-12345"
