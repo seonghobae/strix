@@ -1,3 +1,4 @@
+"""Argument parser utilities for tool parameters."""
 import contextlib
 import inspect
 import json
@@ -7,12 +8,15 @@ from typing import Any, Union, get_args, get_origin
 
 
 class ArgumentConversionError(Exception):
+    """Exception raised when argument conversion fails."""
     def __init__(self, message: str, param_name: str | None = None) -> None:
+        """Initialize the ArgumentConversionError."""
         self.param_name = param_name
         super().__init__(message)
 
 
 def convert_arguments(func: Callable[..., Any], kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Convert string arguments to their appropriate types based on function signature."""
     try:
         sig = inspect.signature(func)
         converted = {}
@@ -48,6 +52,7 @@ def convert_arguments(func: Callable[..., Any], kwargs: dict[str, Any]) -> dict[
 
 
 def convert_string_to_type(value: str, param_type: Any) -> Any:
+    """Convert a single string value to a specified type."""
     origin = get_origin(param_type)
     if origin is Union or isinstance(param_type, types.UnionType):
         args = get_args(param_type)
@@ -69,6 +74,7 @@ def convert_string_to_type(value: str, param_type: Any) -> Any:
 
 
 def _convert_basic_types(value: str, param_type: Any, origin: Any = None) -> Any:
+    """Convert a string value to basic types like int, float, bool, list, or dict."""
     basic_type_converters: dict[Any, Callable[[str], Any]] = {
         int: int,
         float: float,
@@ -90,6 +96,7 @@ def _convert_basic_types(value: str, param_type: Any, origin: Any = None) -> Any
 
 
 def _convert_to_bool(value: str) -> bool:
+    """Convert a string to a boolean."""
     if value.lower() in ("true", "1", "yes", "on"):
         return True
     if value.lower() in ("false", "0", "no", "off"):
@@ -98,6 +105,7 @@ def _convert_to_bool(value: str) -> bool:
 
 
 def _convert_to_list(value: str) -> list[Any]:
+    """Convert a string to a list."""
     try:
         parsed = json.loads(value)
         if isinstance(parsed, list):
@@ -111,6 +119,7 @@ def _convert_to_list(value: str) -> list[Any]:
 
 
 def _convert_to_dict(value: str) -> dict[str, Any]:
+    """Convert a string to a dictionary."""
     try:
         parsed = json.loads(value)
         if isinstance(parsed, dict):
