@@ -1,3 +1,5 @@
+"""Python actions module."""
+
 from typing import Any, Literal
 
 from strix.tools.registry import register_tool
@@ -13,13 +15,16 @@ def python_action(
     timeout: int = 30,
     session_id: str | None = None,
 ) -> dict[str, Any]:
+    """Execute Python code in isolated sessions."""
     from .python_manager import get_python_session_manager
 
     def _validate_code(action_name: str, code: str | None) -> None:
+        """Validate that code is provided for actions that require it."""
         if not code:
             raise ValueError(f"code parameter is required for {action_name} action")
 
     def _validate_action(action_name: str) -> None:
+        """Raise an error for an unknown action."""
         raise ValueError(f"Unknown action: {action_name}")
 
     manager = get_python_session_manager()
@@ -42,6 +47,7 @@ def python_action(
 
             case _:
                 _validate_action(action)  # type: ignore[unreachable]
+                return {}  # pragma: no cover  # Fallback for pyright type checking
 
     except (ValueError, RuntimeError) as e:
         return {"stderr": str(e), "session_id": session_id, "stdout": "", "is_running": False}
