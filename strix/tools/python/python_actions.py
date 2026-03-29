@@ -1,3 +1,5 @@
+"""Python execution tool actions."""
+
 from typing import Any, Literal
 
 from strix.tools.registry import register_tool
@@ -13,13 +15,26 @@ def python_action(
     timeout: int = 30,
     session_id: str | None = None,
 ) -> dict[str, Any]:
+    """Execute python actions including creating sessions, executing code, and listing sessions.
+
+    Args:
+        action: The action to perform (new_session, execute, close, list_sessions).
+        code: The python code to execute.
+        timeout: Execution timeout in seconds.
+        session_id: Optional session identifier.
+
+    Returns:
+        A dictionary containing the stdout, stderr, and execution state.
+    """
     from .python_manager import get_python_session_manager
 
     def _validate_code(action_name: str, code: str | None) -> None:
+        """Validate that code is provided for actions that require it."""
         if not code:
             raise ValueError(f"code parameter is required for {action_name} action")
 
     def _validate_action(action_name: str) -> None:
+        """Validate that the action is a known action."""
         raise ValueError(f"Unknown action: {action_name}")
 
     manager = get_python_session_manager()
