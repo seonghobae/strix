@@ -1,9 +1,9 @@
+"""Stateful Python execution session powered by IPython shell."""
+
 import io
 import sys
 import threading
 from typing import Any
-
-from IPython.core.interactiveshell import InteractiveShell
 
 
 MAX_STDOUT_LENGTH = 10_000
@@ -11,7 +11,16 @@ MAX_STDERR_LENGTH = 5_000
 
 
 class PythonInstance:
+    """Manage a single Python execution session with captured outputs."""
+
     def __init__(self, session_id: str) -> None:
+        """Initialize a Python execution session.
+
+        Args:
+            session_id: Unique identifier for the session.
+        """
+        from IPython.core.interactiveshell import InteractiveShell
+
         self.session_id = session_id
         self.is_running = True
         self._execution_lock = threading.Lock()
@@ -28,6 +37,7 @@ class PythonInstance:
         self._setup_proxy_functions()
 
     def _setup_proxy_functions(self) -> None:
+        """Expose proxy helper functions in the interactive namespace."""
         try:
             from strix.tools.proxy import proxy_actions
 
@@ -47,6 +57,7 @@ class PythonInstance:
             pass
 
     def _validate_session(self) -> dict[str, Any] | None:
+        """Validate the current session state before execution."""
         if not self.is_running:
             return {
                 "session_id": self.session_id,
@@ -57,6 +68,7 @@ class PythonInstance:
         return None
 
     def _truncate_output(self, content: str, max_length: int, suffix: str) -> str:
+        """Trim output content to a maximum size with suffix marker."""
         if len(content) > max_length:
             return content[:max_length] + suffix
         return content
@@ -64,6 +76,7 @@ class PythonInstance:
     def _format_execution_result(
         self, execution_result: Any, stdout_content: str, stderr_content: str
     ) -> dict[str, Any]:
+        """Normalize execution result payload for API responses."""
         stdout = self._truncate_output(
             stdout_content, MAX_STDOUT_LENGTH, "... [stdout truncated at 10k chars]"
         )
@@ -101,6 +114,7 @@ class PythonInstance:
         }
 
     def _handle_execution_error(self, error: BaseException) -> dict[str, Any]:
+        """Convert an exception into a bounded error response payload."""
         error_msg = str(error)
         error_msg = self._truncate_output(
             error_msg, MAX_STDERR_LENGTH, "... [error truncated at 5k chars]"
@@ -114,6 +128,15 @@ class PythonInstance:
         }
 
     def execute_code(self, code: str, timeout: int = 30) -> dict[str, Any]:
+        """Execute Python code in the managed interactive shell.
+
+        Args:
+            code: Python source code to execute.
+            timeout: Maximum execution time in seconds.
+
+        Returns:
+            A standardized execution result dictionary.
+        """
         session_error = self._validate_session()
         if session_error:
             return session_error
@@ -127,6 +150,7 @@ class PythonInstance:
             old_stdout, old_stderr = sys.stdout, sys.stderr
 
             def _run_code() -> None:
+                """Run code in the shell and capture outputs."""
                 try:
                     sys.stdout = stdout_capture
                     sys.stderr = stderr_capture
@@ -167,8 +191,10 @@ class PythonInstance:
             return self._handle_execution_error(RuntimeError("Unknown execution error"))
 
     def close(self) -> None:
+        """Stop this session and reset the shell state."""
         self.is_running = False
         self.shell.reset(new_session=False)
 
     def is_alive(self) -> bool:
+        """Return whether the session is currently active."""
         return self.is_running
