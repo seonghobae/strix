@@ -1,3 +1,9 @@
+"""Configuration module for managing Strix CLI and environment settings.
+
+This module provides the core Config class and helper functions to load, save,
+and manage configuration values and environment variables.
+"""
+
 import contextlib
 import json
 import os
@@ -58,6 +64,7 @@ class Config:
 
     @classmethod
     def _tracked_names(cls) -> list[str]:
+        """Get the internal list of tracked configuration variable names."""
         return [
             k
             for k, v in vars(cls).items()
@@ -66,14 +73,17 @@ class Config:
 
     @classmethod
     def tracked_vars(cls) -> list[str]:
+        """Get the list of tracked environment variable names in uppercase."""
         return [name.upper() for name in cls._tracked_names()]
 
     @classmethod
     def _llm_env_vars(cls) -> set[str]:
+        """Get the set of LLM-related environment variable names in uppercase."""
         return {name.upper() for name in cls._LLM_CANONICAL_NAMES}
 
     @classmethod
     def _llm_env_changed(cls, saved_env: dict[str, Any]) -> bool:
+        """Check if any LLM-related environment variables differ from the saved config."""
         for var_name in cls._llm_env_vars():
             current = os.getenv(var_name)
             if current is None:
@@ -84,22 +94,26 @@ class Config:
 
     @classmethod
     def get(cls, name: str) -> str | None:
+        """Get a configuration value, falling back to the default if not set in the environment."""
         env_name = name.upper()
         default = getattr(cls, name, None)
         return os.getenv(env_name, default)
 
     @classmethod
     def config_dir(cls) -> Path:
+        """Get the directory path for Strix configuration files."""
         return Path.home() / ".strix"
 
     @classmethod
     def config_file(cls) -> Path:
+        """Get the path to the CLI configuration JSON file."""
         if cls._config_file_override is not None:
             return cls._config_file_override
         return cls.config_dir() / "cli-config.json"
 
     @classmethod
     def load(cls) -> dict[str, Any]:
+        """Load the configuration data from the JSON file."""
         path = cls.config_file()
         if not path.exists():
             return {}
@@ -112,6 +126,7 @@ class Config:
 
     @classmethod
     def save(cls, config: dict[str, Any]) -> bool:
+        """Save the given configuration data to the JSON file."""
         try:
             cls.config_dir().mkdir(parents=True, exist_ok=True)
             config_path = cls.config_dir() / "cli-config.json"
@@ -125,6 +140,7 @@ class Config:
 
     @classmethod
     def apply_saved(cls, force: bool = False) -> dict[str, str]:
+        """Apply saved configuration values to the environment."""
         saved = cls.load()
         env_vars = saved.get("env", {})
         if not isinstance(env_vars, dict):
@@ -155,6 +171,7 @@ class Config:
 
     @classmethod
     def capture_current(cls) -> dict[str, Any]:
+        """Capture the current tracked environment variables into a dictionary."""
         env_vars = {}
         for var_name in cls.tracked_vars():
             value = os.getenv(var_name)
@@ -164,6 +181,7 @@ class Config:
 
     @classmethod
     def save_current(cls) -> bool:
+        """Save the currently set tracked environment variables to the configuration file."""
         existing = cls.load().get("env", {})
         merged = dict(existing)
 
@@ -180,10 +198,12 @@ class Config:
 
 
 def apply_saved_config(force: bool = False) -> dict[str, str]:
+    """Apply the saved configuration to the current environment."""
     return Config.apply_saved(force=force)
 
 
 def save_current_config() -> bool:
+    """Save the current environment configuration to the config file."""
     return Config.save_current()
 
 
