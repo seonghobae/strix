@@ -1,0 +1,118 @@
+---
+name: Strix
+
+'on':
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: snok/install-poetry@v1
+
+      - name: Install dependencies
+        run: poetry install --with dev
+
+      - name: Run tests
+        run: poetry run pytest tests/ -q --no-header --no-cov
+
+  sarif-upload:
+    name: Upload SARIF to GitHub code scanning
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write   # required for code-scanning SARIF upload
+      contents: read
+    needs: test
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: snok/install-poetry@v1
+
+      - name: Install dependencies
+        run: poetry install --with dev
+
+      - name: Generate SARIF and upload to GitHub code scanning
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          poetry run python - <<'EOF'
+          import json, os, sys
+          sys.path.insert(0, ".")
+          from strix.sarif import to_sarif, upload_sarif_to_github
+
+          # Synthetic finding so the workflow is self-contained
+          # (no live scan target needed).
+          reports = [
+              {
+                  "id": "strix-workflow-001",
+                  "title": "Strix workflow integration test",
+                  "severity": "low",
+                  "description": (
+                      "Synthetic finding created by the Strix CI workflow."
+                  ),
+                  "remediation_steps": (
+                      "No action needed – this is a synthetic CI test result."
+                  ),
+                  "cvss": 1.0,
+                  "cwe": "CWE-0",
+                  "target": "https://example.com",
+                  "timestamp": "2024-01-01 00:00:00 UTC",
+                  "code_locations": [
+                      {
+                          "file": "strix/sarif.py",
+                          "start_line": 1,
+                          "end_line": 1,
+                          "snippet": "# SARIF workflow integration test",
+                      }
+                  ],
+              }
+          ]
+
+          sarif = to_sarif(reports, tool_version="ci-test")
+
+          token = os.environ["GITHUB_TOKEN"]
+          repo  = os.environ.get(
+              "GITHUB_REPOSITORY", "${{ github.repository }}"
+          )
+          ref   = os.environ["GITHUB_REF"]
+          sha   = os.environ["GITHUB_SHA"]
+
+          print(f"Uploading SARIF to {repo} ref={ref} sha={sha[:8]}...")
+          result = upload_sarif_to_github(
+              sarif=sarif,
+              github_token=token,
+              github_repo=repo,
+              ref=ref,
+              commit_sha=sha,
+          )
+
+          print(json.dumps(result, indent=2))
+          if not result["success"]:
+              sys.exit(1)
+          print("SARIF upload succeeded.")
+          EOF

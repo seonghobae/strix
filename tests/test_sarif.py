@@ -29,6 +29,7 @@ def _make_report(
     endpoint: str | None = None,
     target: str = "https://example.com",
 ) -> dict[str, Any]:
+    """Docstring."""
     report: dict[str, Any] = {
         "id": report_id,
         "title": title,
@@ -51,11 +52,12 @@ def _make_report(
 
 
 # ---------------------------------------------------------------------------
-# to_sarif() – document structure
+# to_sarif() - document structure
 # ---------------------------------------------------------------------------
 
 
 def test_to_sarif_returns_valid_schema_and_version() -> None:
+    """Docstring."""
     sarif = to_sarif([], tool_version="0.8.3")
     assert sarif["version"] == "2.1.0"
     assert "sarif-schema-2.1.0.json" in sarif["$schema"]
@@ -63,6 +65,7 @@ def test_to_sarif_returns_valid_schema_and_version() -> None:
 
 
 def test_to_sarif_tool_driver() -> None:
+    """Docstring."""
     sarif = to_sarif([], tool_version="1.2.3")
     driver = sarif["runs"][0]["tool"]["driver"]
     assert driver["name"] == "Strix"
@@ -71,6 +74,7 @@ def test_to_sarif_tool_driver() -> None:
 
 
 def test_to_sarif_empty_reports() -> None:
+    """Docstring."""
     sarif = to_sarif([])
     run = sarif["runs"][0]
     assert run["results"] == []
@@ -78,6 +82,7 @@ def test_to_sarif_empty_reports() -> None:
 
 
 def test_to_sarif_single_report_produces_one_result_and_one_rule() -> None:
+    """Docstring."""
     report = _make_report()
     sarif = to_sarif([report])
     run = sarif["runs"][0]
@@ -86,6 +91,7 @@ def test_to_sarif_single_report_produces_one_result_and_one_rule() -> None:
 
 
 def test_to_sarif_rule_uses_cwe_as_id() -> None:
+    """Docstring."""
     report = _make_report(cwe="CWE-89")
     sarif = to_sarif([report])
     rule = sarif["runs"][0]["tool"]["driver"]["rules"][0]
@@ -93,6 +99,7 @@ def test_to_sarif_rule_uses_cwe_as_id() -> None:
 
 
 def test_to_sarif_rule_id_falls_back_to_hash_when_no_cwe() -> None:
+    """Docstring."""
     report = _make_report(cwe=None)
     sarif = to_sarif([report])
     rule = sarif["runs"][0]["tool"]["driver"]["rules"][0]
@@ -100,6 +107,7 @@ def test_to_sarif_rule_id_falls_back_to_hash_when_no_cwe() -> None:
 
 
 def test_to_sarif_deduplicates_rules_for_same_cwe() -> None:
+    """Docstring."""
     r1 = _make_report(report_id="vuln-0001", cwe="CWE-89", title="SQL Injection #1")
     r2 = _make_report(report_id="vuln-0002", cwe="CWE-89", title="SQL Injection #2")
     sarif = to_sarif([r1, r2])
@@ -116,6 +124,7 @@ def test_to_sarif_deduplicates_rules_for_same_cwe() -> None:
 
 
 def test_to_sarif_rule_security_severity_uses_cvss_when_available() -> None:
+    """Docstring."""
     report = _make_report(cvss=8.1, severity="high")
     sarif = to_sarif([report])
     rule = sarif["runs"][0]["tool"]["driver"]["rules"][0]
@@ -139,6 +148,7 @@ def test_to_sarif_rule_security_severity_fallback_is_numeric_and_in_range(
     severity: str, expected_min: float, expected_max: float
 ) -> None:
     # Build a report with NO cvss score so the fallback kicks in
+    """Docstring."""
     report = _make_report(severity=severity)
     del report["cvss"]
     sarif = to_sarif([report])
@@ -178,6 +188,7 @@ def test_to_sarif_result_does_not_have_invalid_security_severity_label() -> None
     ],
 )
 def test_to_sarif_severity_to_level_mapping(severity: str, expected_level: str) -> None:
+    """Docstring."""
     report = _make_report(severity=severity)
     sarif = to_sarif([report])
     result = sarif["runs"][0]["results"][0]
@@ -190,6 +201,7 @@ def test_to_sarif_severity_to_level_mapping(severity: str, expected_level: str) 
 
 
 def test_to_sarif_result_with_code_locations() -> None:
+    """Docstring."""
     locs = [{"file": "src/app.py", "start_line": 10, "end_line": 12, "snippet": "x = y"}]
     report = _make_report(code_locations=locs)
     sarif = to_sarif([report])
@@ -204,6 +216,7 @@ def test_to_sarif_result_with_code_locations() -> None:
 
 
 def test_to_sarif_result_without_code_locations_falls_back_to_target() -> None:
+    """Docstring."""
     report = _make_report(code_locations=None, target="https://example.com")
     sarif = to_sarif([report])
     result = sarif["runs"][0]["results"][0]
@@ -213,6 +226,7 @@ def test_to_sarif_result_without_code_locations_falls_back_to_target() -> None:
 
 
 def test_to_sarif_result_without_code_locations_prefers_endpoint() -> None:
+    """Docstring."""
     report = _make_report(code_locations=None, endpoint="/api/login", target="https://example.com")
     sarif = to_sarif([report])
     result = sarif["runs"][0]["results"][0]
@@ -226,6 +240,7 @@ def test_to_sarif_result_without_code_locations_prefers_endpoint() -> None:
 
 
 def test_to_sarif_partial_fingerprint_is_deterministic() -> None:
+    """Docstring."""
     locs = [{"file": "app.py", "start_line": 5, "end_line": 5}]
     report = _make_report(code_locations=locs)
     sarif1 = to_sarif([report])
@@ -236,6 +251,7 @@ def test_to_sarif_partial_fingerprint_is_deterministic() -> None:
 
 
 def test_to_sarif_different_locations_give_different_fingerprints() -> None:
+    """Docstring."""
     locs_a = [{"file": "app.py", "start_line": 5, "end_line": 5}]
     locs_b = [{"file": "app.py", "start_line": 99, "end_line": 99}]
     sarif_a = to_sarif([_make_report(code_locations=locs_a)])
@@ -246,11 +262,11 @@ def test_to_sarif_different_locations_give_different_fingerprints() -> None:
 
 
 # ---------------------------------------------------------------------------
-# encode_sarif()
 # ---------------------------------------------------------------------------
 
 
 def test_encode_sarif_produces_valid_base64_gzip_json() -> None:
+    """Docstring."""
     sarif = to_sarif([_make_report()])
     encoded = encode_sarif(sarif)
     decoded_bytes = base64.b64decode(encoded)
@@ -260,11 +276,11 @@ def test_encode_sarif_produces_valid_base64_gzip_json() -> None:
 
 
 # ---------------------------------------------------------------------------
-# upload_sarif_to_github()
 # ---------------------------------------------------------------------------
 
 
 def test_upload_sarif_success() -> None:
+    """Docstring."""
     sarif = to_sarif([_make_report()])
     mock_response = MagicMock()
     mock_response.status_code = 202
@@ -292,6 +308,7 @@ def test_upload_sarif_success() -> None:
 
 
 def test_upload_sarif_http_error() -> None:
+    """Docstring."""
     sarif = to_sarif([])
     mock_response = MagicMock()
     mock_response.status_code = 403
@@ -313,6 +330,7 @@ def test_upload_sarif_http_error() -> None:
 
 
 def test_upload_sarif_network_error() -> None:
+    """Docstring."""
     import requests as req_lib
 
     sarif = to_sarif([])
@@ -331,6 +349,7 @@ def test_upload_sarif_network_error() -> None:
 
 
 def test_upload_sarif_uses_custom_api_url() -> None:
+    """Docstring."""
     sarif = to_sarif([])
     mock_response = MagicMock()
     mock_response.status_code = 202
@@ -357,6 +376,7 @@ def test_upload_sarif_uses_custom_api_url() -> None:
 
 
 def test_tracer_to_sarif_returns_sarif_document(tmp_path, monkeypatch) -> None:
+    """Docstring."""
     import strix.telemetry.tracer as tracer_module
     from strix.telemetry import utils as telemetry_utils
     from strix.telemetry.tracer import Tracer, set_global_tracer
@@ -386,12 +406,14 @@ def test_tracer_to_sarif_returns_sarif_document(tmp_path, monkeypatch) -> None:
     assert run["results"][0]["ruleId"] == "CWE-79"
 
 def test_to_sarif_rule_helpuri_uses_cve_when_available() -> None:
+    """Docstring."""
     report = _make_report(cve="CVE-2023-12345")
     sarif = to_sarif([report])
     rule = sarif["runs"][0]["tool"]["driver"]["rules"][0]
     assert rule["helpUri"] == "https://nvd.nist.gov/vuln/detail/CVE-2023-12345"
 
 def test_to_sarif_result_properties_uses_cve_when_available() -> None:
+    """Docstring."""
     report = _make_report(cve="CVE-2023-12345")
     sarif = to_sarif([report])
     result = sarif["runs"][0]["results"][0]

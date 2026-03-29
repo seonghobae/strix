@@ -358,6 +358,11 @@ python_files = ["test_*.py", "*_test.py"]
 python_functions = ["test_*"]
 python_classes = ["Test*"]
 asyncio_mode = "auto"
+filterwarnings = [
+    "ignore:Support for class-based `config` is deprecated:DeprecationWarning",
+    "ignore:Filth.replace_with.* will be removed:DeprecationWarning",
+    "ignore:The NumPy module was reloaded:UserWarning",
+]
 
 [tool.coverage.run]
 source = ["strix"]
@@ -377,6 +382,7 @@ exclude_lines = [
     "raise NotImplementedError",
     "if 0:",
     "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ]

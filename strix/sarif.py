@@ -33,7 +33,7 @@ _SEVERITY_LEVEL: dict[str, str] = {
 
 # Fallback CVSS scores used when a report has no numeric cvss value.
 # GitHub code scanning interprets security-severity as a CVSS-like numeric score
-# (0.0–10.0); it must never be an empty string or a text label.
+# (0.0-10.0); it must never be an empty string or a text label.
 _SEVERITY_DEFAULT_CVSS: dict[str, str] = {
     "critical": "9.5",
     "high": "8.0",
@@ -62,7 +62,7 @@ def _make_rule(report: dict[str, Any]) -> dict[str, Any]:
     if cwe:
         tags.append(cwe)
 
-    # security-severity must be a numeric string (CVSS score 0.0–10.0).
+    # security-severity must be a numeric string (CVSS score 0.0-10.0).
     # Use the actual CVSS score when available; fall back to a severity-derived
     # default so the value is never empty or a text label.
     cvss_value = report.get("cvss")
@@ -128,6 +128,7 @@ def to_sarif(
 
     Returns:
         A dict representing a valid SARIF 2.1.0 document.
+
     """
     rules: list[dict[str, Any]] = []
     rule_index_map: dict[str, int] = {}
@@ -218,6 +219,7 @@ def encode_sarif(sarif: dict[str, Any]) -> str:
 
     Returns:
         A base64-encoded string of the gzip-compressed SARIF JSON.
+
     """
     sarif_bytes = json.dumps(sarif, ensure_ascii=False).encode("utf-8")
     compressed = gzip.compress(sarif_bytes)
@@ -246,6 +248,7 @@ def upload_sarif_to_github(
     Returns:
         A dict with ``success`` (bool), ``status_code`` (int), and either
         ``sarif_id`` (str) on success or ``error`` (str) on failure.
+
     """
     encoded = encode_sarif(sarif)
     url = f"{github_api_url.rstrip('/')}/repos/{github_repo}/code-scanning/sarifs"
@@ -264,7 +267,7 @@ def upload_sarif_to_github(
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=60)
     except requests.RequestException as exc:
-        logger.error("SARIF upload request failed: %s", exc)
+        logger.exception("SARIF upload request failed")
         return {"success": False, "status_code": 0, "error": str(exc)}
 
     if response.status_code in (200, 202):
@@ -274,7 +277,7 @@ def upload_sarif_to_github(
         return {"success": True, "status_code": response.status_code, "sarif_id": sarif_id}
 
     logger.error(
-        "SARIF upload failed: HTTP %d – %s", response.status_code, response.text[:500]
+        "SARIF upload failed: HTTP %d - %s", response.status_code, response.text[:500]
     )
     return {
         "success": False,
