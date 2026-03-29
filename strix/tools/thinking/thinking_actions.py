@@ -1,3 +1,5 @@
+"""Thinking tool actions for Strix."""
+
 from typing import Any
 
 from strix.tools.registry import register_tool
@@ -5,6 +7,7 @@ from strix.tools.registry import register_tool
 
 @register_tool(sandbox_execution=False)
 def think(thought: str) -> dict[str, Any]:
+    """Record a thought from the agent."""
     try:
         if not thought or not thought.strip():
             return {"success": False, "message": "Thought cannot be empty"}
