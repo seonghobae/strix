@@ -10,7 +10,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  security-events: write   # required for code-scanning SARIF upload
   contents: read
 
 jobs:
@@ -36,6 +35,8 @@ jobs:
   sarif-upload:
     name: Upload SARIF to GitHub code scanning
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write   # required for code-scanning SARIF upload
     needs: test
     if: github.event_name != 'pull_request'
 
@@ -54,8 +55,8 @@ jobs:
       - name: Generate SARIF and upload to GitHub code scanning
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REF:   ${{ github.ref }}
-          GITHUB_SHA:   ${{ github.sha }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
         run: |
           poetry run python - <<'EOF'
           import json, os, sys
