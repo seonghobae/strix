@@ -1,4 +1,7 @@
+"""Tests for the argument parser utilities."""
+
 from collections.abc import Callable
+from unittest.mock import patch
 
 import pytest
 
@@ -187,6 +190,22 @@ class TestConvertStringToType:
         result = convert_string_to_type("100", int | None)
         assert result == 100
 
+    def test_union_conversion_failure(self) -> None:
+        """Test failure to convert any type in Union returns original value."""
+        result = convert_string_to_type("not a number", int | float)
+        assert result == "not a number"
+
+    def test_mock_optional_type(self) -> None:
+        """Test conversion with custom Optional type implementation."""
+
+        class MockOptionalType:
+            """Mock type with __args__ simulating Optional without origin."""
+
+            __args__ = (int, type(None))
+
+        assert convert_string_to_type("42", MockOptionalType) == 42
+        assert convert_string_to_type("not a number", MockOptionalType) == "not a number"
+
 
 class TestConvertArguments:
     """Tests for the convert_arguments function."""
@@ -253,6 +272,16 @@ class TestConvertArguments:
         with pytest.raises(ArgumentConversionError) as exc_info:
             convert_arguments(sample_function_with_types, kwargs)
         assert exc_info.value.param_name == "count"
+
+    def test_convert_arguments_inspect_failure(self) -> None:
+        """Test that inspect exceptions raise ArgumentConversionError."""
+        with (
+            patch("inspect.signature", side_effect=ValueError("Test error")),
+            pytest.raises(
+                ArgumentConversionError, match="Failed to process function arguments: Test error"
+            ),
+        ):
+            convert_arguments(lambda x: x, {"x": "1"})
 
 
 class TestArgumentConversionError:
