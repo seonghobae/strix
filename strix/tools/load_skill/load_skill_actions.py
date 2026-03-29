@@ -1,3 +1,5 @@
+"""Skill loading tool for agents."""
+
 from typing import Any
 
 from strix.tools.registry import register_tool
@@ -5,6 +7,15 @@ from strix.tools.registry import register_tool
 
 @register_tool(sandbox_execution=False)
 def load_skill(agent_state: Any, skills: str) -> dict[str, Any]:
+    """Load one or more skills into the active agent.
+
+    Args:
+        agent_state: The current state of the agent.
+        skills: A comma-separated string of skill names to load.
+
+    Returns:
+        dict[str, Any]: A dictionary containing success status and skill loading details.
+    """
     try:
         from strix.skills import parse_skill_list, validate_requested_skills
 
