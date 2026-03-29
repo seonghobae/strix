@@ -1,3 +1,5 @@
+"""Registry for Strix tools."""
+
 import inspect
 import logging
 import os
@@ -19,15 +21,19 @@ logger = logging.getLogger(__name__)
 
 
 class ImplementedInClientSideOnlyError(Exception):
+    """Exception raised when a tool is implemented in the client side only."""
+
     def __init__(
         self,
         message: str = "This tool is implemented in the client side only",
     ) -> None:
+        """Initialize the exception."""
         self.message = message
         super().__init__(self.message)
 
 
 def _process_dynamic_content(content: str) -> str:
+    """Process dynamic content in tool schema."""
     if "{{DYNAMIC_SKILLS_DESCRIPTION}}" in content:
         try:
             from strix.skills import generate_skills_description
@@ -45,6 +51,7 @@ def _process_dynamic_content(content: str) -> str:
 
 
 def _load_xml_schema(path: Path) -> Any:
+    """Load XML schema from path."""
     if not path.exists():
         return None
     try:
@@ -88,6 +95,7 @@ def _load_xml_schema(path: Path) -> Any:
 
 
 def _parse_param_schema(tool_xml: str) -> dict[str, Any]:
+    """Parse parameter schema from XML."""
     params: set[str] = set()
     required: set[str] = set()
 
@@ -116,6 +124,7 @@ def _parse_param_schema(tool_xml: str) -> dict[str, Any]:
 
 
 def _get_module_name(func: Callable[..., Any]) -> str:
+    """Get module name for a function."""
     module = inspect.getmodule(func)
     if not module:
         return "unknown"
@@ -129,6 +138,7 @@ def _get_module_name(func: Callable[..., Any]) -> str:
 
 
 def _get_schema_path(func: Callable[..., Any]) -> Path | None:
+    """Get schema path for a function."""
     module = inspect.getmodule(func)
     if not module or not module.__name__:
         return None
@@ -150,10 +160,12 @@ def _get_schema_path(func: Callable[..., Any]) -> Path | None:
 
 
 def _is_sandbox_mode() -> bool:
+    """Check if sandbox mode is enabled."""
     return os.getenv("STRIX_SANDBOX_MODE", "false").lower() == "true"
 
 
 def _is_browser_disabled() -> bool:
+    """Check if browser is disabled."""
     if os.getenv("STRIX_DISABLE_BROWSER", "").lower() == "true":
         return True
 
@@ -164,6 +176,7 @@ def _is_browser_disabled() -> bool:
 
 
 def _has_perplexity_api() -> bool:
+    """Check if perplexity API key is available."""
     if os.getenv("PERPLEXITY_API_KEY"):
         return True
 
@@ -178,6 +191,7 @@ def _should_register_tool(
     requires_browser_mode: bool,
     requires_web_search_mode: bool,
 ) -> bool:
+    """Check if a tool should be registered."""
     sandbox_mode = _is_sandbox_mode()
 
     if sandbox_mode and not sandbox_execution:
@@ -194,7 +208,10 @@ def register_tool(
     requires_browser_mode: bool = False,
     requires_web_search_mode: bool = False,
 ) -> Callable[..., Any]:
+    """Register a tool."""
+
     def decorator(f: Callable[..., Any]) -> Callable[..., Any]:
+        """Decorator for tool registration."""
         if not _should_register_tool(
             sandbox_execution=sandbox_execution,
             requires_browser_mode=requires_browser_mode,
@@ -241,6 +258,7 @@ def register_tool(
 
         @wraps(f)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            """Wrapper for tool execution."""
             return f(*args, **kwargs)
 
         return wrapper
@@ -251,18 +269,22 @@ def register_tool(
 
 
 def get_tool_by_name(name: str) -> Callable[..., Any] | None:
+    """Get tool by name."""
     return _tools_by_name.get(name)
 
 
 def get_tool_names() -> list[str]:
+    """Get all tool names."""
     return list(_tools_by_name.keys())
 
 
 def get_tool_param_schema(name: str) -> dict[str, Any] | None:
+    """Get tool parameter schema."""
     return _tool_param_schemas.get(name)
 
 
 def needs_agent_state(tool_name: str) -> bool:
+    """Check if tool needs agent state."""
     tool_func = get_tool_by_name(tool_name)
     if not tool_func:
         return False
@@ -271,6 +293,7 @@ def needs_agent_state(tool_name: str) -> bool:
 
 
 def should_execute_in_sandbox(tool_name: str) -> bool:
+    """Check if tool should execute in sandbox."""
     for tool in tools:
         if tool.get("name") == tool_name:
             return bool(tool.get("sandbox_execution", True))
@@ -278,6 +301,7 @@ def should_execute_in_sandbox(tool_name: str) -> bool:
 
 
 def get_tools_prompt() -> str:
+    """Get tools prompt for LLM."""
     tools_by_module: dict[str, list[dict[str, Any]]] = {}
     for tool in tools:
         module = tool.get("module", "unknown")
@@ -301,6 +325,7 @@ def get_tools_prompt() -> str:
 
 
 def clear_registry() -> None:
+    """Clear the tool registry."""
     tools.clear()
     _tools_by_name.clear()
     _tool_param_schemas.clear()
