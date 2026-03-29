@@ -1,3 +1,5 @@
+"""Notes actions module."""
+
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -13,6 +15,16 @@ def _filter_notes(
     tags: list[str] | None = None,
     search_query: str | None = None,
 ) -> list[dict[str, Any]]:
+    """Filter notes based on category, tags, and search query.
+
+    Args:
+        category: Optional category to filter by.
+        tags: Optional list of tags to filter by.
+        search_query: Optional search string to match against title and content.
+
+    Returns:
+        A list of dictionaries representing the filtered notes.
+    """
     filtered_notes = []
 
     for note_id, note in _notes_storage.items():
@@ -46,6 +58,17 @@ def create_note(
     category: str = "general",
     tags: list[str] | None = None,
 ) -> dict[str, Any]:
+    """Create a new note.
+
+    Args:
+        title: The title of the note.
+        content: The content of the note.
+        category: The category of the note (default: 'general').
+        tags: Optional list of tags for the note.
+
+    Returns:
+        A dictionary with the success status, note ID, and a message or error.
+    """
     try:
         if not title or not title.strip():
             return {"success": False, "error": "Title cannot be empty", "note_id": None}
@@ -91,6 +114,16 @@ def list_notes(
     tags: list[str] | None = None,
     search: str | None = None,
 ) -> dict[str, Any]:
+    """List notes with optional filtering.
+
+    Args:
+        category: Optional category to filter by.
+        tags: Optional list of tags to filter by.
+        search: Optional search string to match against title and content.
+
+    Returns:
+        A dictionary with the success status, list of notes, and total count or error.
+    """
     try:
         filtered_notes = _filter_notes(category=category, tags=tags, search_query=search)
 
@@ -116,6 +149,17 @@ def update_note(
     content: str | None = None,
     tags: list[str] | None = None,
 ) -> dict[str, Any]:
+    """Update an existing note.
+
+    Args:
+        note_id: The ID of the note to update.
+        title: Optional new title.
+        content: Optional new content.
+        tags: Optional new list of tags.
+
+    Returns:
+        A dictionary with the success status and message or error.
+    """
     try:
         if note_id not in _notes_storage:
             return {"success": False, "error": f"Note with ID '{note_id}' not found"}
@@ -148,6 +192,14 @@ def update_note(
 
 @register_tool(sandbox_execution=False)
 def delete_note(note_id: str) -> dict[str, Any]:
+    """Delete a note by ID.
+
+    Args:
+        note_id: The ID of the note to delete.
+
+    Returns:
+        A dictionary with the success status and message or error.
+    """
     try:
         if note_id not in _notes_storage:
             return {"success": False, "error": f"Note with ID '{note_id}' not found"}
