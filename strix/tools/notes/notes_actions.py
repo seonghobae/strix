@@ -1,3 +1,9 @@
+"""Notes management actions for the Strix agent.
+
+This module provides tools for creating, listing, updating, and deleting notes
+in memory. Notes can be categorized, tagged, and searched.
+"""
+
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -13,6 +19,16 @@ def _filter_notes(
     tags: list[str] | None = None,
     search_query: str | None = None,
 ) -> list[dict[str, Any]]:
+    """Filter notes based on category, tags, and search query.
+
+    Args:
+        category: Optional category to filter by.
+        tags: Optional list of tags to filter by.
+        search_query: Optional string to search for in title and content.
+
+    Returns:
+        List of filtered notes sorted by creation date (newest first).
+    """
     filtered_notes = []
 
     for note_id, note in _notes_storage.items():
@@ -46,6 +62,17 @@ def create_note(
     category: str = "general",
     tags: list[str] | None = None,
 ) -> dict[str, Any]:
+    """Create a new note in the memory storage.
+
+    Args:
+        title: The title of the note. Must not be empty.
+        content: The content of the note. Must not be empty.
+        category: The category of the note. Must be one of the valid categories.
+        tags: Optional list of tags to associate with the note.
+
+    Returns:
+        A dictionary containing the success status, note ID, and a success or error message.
+    """
     try:
         if not title or not title.strip():
             return {"success": False, "error": "Title cannot be empty", "note_id": None}
@@ -91,6 +118,16 @@ def list_notes(
     tags: list[str] | None = None,
     search: str | None = None,
 ) -> dict[str, Any]:
+    """List and filter notes from the memory storage.
+
+    Args:
+        category: Optional category to filter the list of notes by.
+        tags: Optional list of tags to filter the list of notes by.
+        search: Optional search string to look for in the note's title and content.
+
+    Returns:
+        A dictionary containing the success status, a list of filtered notes, and total count.
+    """
     try:
         filtered_notes = _filter_notes(category=category, tags=tags, search_query=search)
 
@@ -116,6 +153,17 @@ def update_note(
     content: str | None = None,
     tags: list[str] | None = None,
 ) -> dict[str, Any]:
+    """Update an existing note in the memory storage.
+
+    Args:
+        note_id: The unique identifier of the note to update.
+        title: Optional new title for the note. If provided, must not be empty.
+        content: Optional new content for the note. If provided, must not be empty.
+        tags: Optional new list of tags for the note.
+
+    Returns:
+        A dictionary containing the success status and a success or error message.
+    """
     try:
         if note_id not in _notes_storage:
             return {"success": False, "error": f"Note with ID '{note_id}' not found"}
@@ -148,6 +196,14 @@ def update_note(
 
 @register_tool(sandbox_execution=False)
 def delete_note(note_id: str) -> dict[str, Any]:
+    """Delete a note from the memory storage by its ID.
+
+    Args:
+        note_id: The unique identifier of the note to delete.
+
+    Returns:
+        A dictionary containing the success status and a success or error message.
+    """
     try:
         if note_id not in _notes_storage:
             return {"success": False, "error": f"Note with ID '{note_id}' not found"}
