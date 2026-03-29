@@ -1,6 +1,7 @@
 """Tests for browser tool actions dispatch and validation."""
 
 import sys
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -211,8 +212,13 @@ def test_handle_tab_actions_dispatches_and_validates(manager: MagicMock) -> None
         browser_actions._handle_tab_actions(manager, "move_tab")
 
 
-def test_handle_utility_actions_dispatches_and_validates(manager: MagicMock) -> None:
+def test_handle_utility_actions_dispatches_and_validates(
+    manager: MagicMock,
+    tmp_path: Path,
+) -> None:
     """Utility handler maps actions and validates required parameters."""
+    out_pdf_path = tmp_path / "out.pdf"
+
     manager.wait_browser.return_value = {"ok": "wait"}
     manager.execute_js.return_value = {"ok": "js"}
     manager.save_pdf.return_value = {"ok": "pdf"}
@@ -236,7 +242,7 @@ def test_handle_utility_actions_dispatches_and_validates(manager: MagicMock) -> 
     assert browser_actions._handle_utility_actions(
         manager,
         "save_pdf",
-        file_path="/tmp/out.pdf",
+        file_path=str(out_pdf_path),
         tab_id="tab-1",
     ) == {"ok": "pdf"}
     assert browser_actions._handle_utility_actions(
@@ -253,7 +259,7 @@ def test_handle_utility_actions_dispatches_and_validates(manager: MagicMock) -> 
     manager.wait_browser.assert_any_call(0, "tab-1")
     manager.wait_browser.assert_any_call(1.5, "tab-1")
     manager.execute_js.assert_called_once_with("return 1;", "tab-1")
-    manager.save_pdf.assert_called_once_with("/tmp/out.pdf", "tab-1")
+    manager.save_pdf.assert_called_once_with(str(out_pdf_path), "tab-1")
     assert manager.get_console_logs.call_count == 1
     assert manager.get_console_logs.call_args.args == ("tab-1", True)
     manager.view_source.assert_called_once_with("tab-1")
@@ -309,27 +315,29 @@ def test_browser_action_dispatches_to_expected_handler(
     handler_name: str,
     monkeypatch: pytest.MonkeyPatch,
     patch_tab_manager: MagicMock,
+    tmp_path: Path,
 ) -> None:
     """browser_action routes actions to the right handler group."""
+    dispatch_pdf_path = tmp_path / "dispatch.pdf"
     called = {"navigation": 0, "interaction": 0, "tab": 0, "utility": 0}
     captured: dict[str, tuple[tuple, dict]] = {}
 
-    def nav(*_args, **_kwargs):
+    def nav(*_args: object, **_kwargs: object) -> dict[str, str]:
         called["navigation"] += 1
         captured["navigation"] = (_args, _kwargs)
         return {"handler": "navigation"}
 
-    def inter(*_args, **_kwargs):
+    def inter(*_args: object, **_kwargs: object) -> dict[str, str]:
         called["interaction"] += 1
         captured["interaction"] = (_args, _kwargs)
         return {"handler": "interaction"}
 
-    def tab(*_args, **_kwargs):
+    def tab(*_args: object, **_kwargs: object) -> dict[str, str]:
         called["tab"] += 1
         captured["tab"] = (_args, _kwargs)
         return {"handler": "tab"}
 
-    def util(*_args, **_kwargs):
+    def util(*_args: object, **_kwargs: object) -> dict[str, str]:
         called["utility"] += 1
         captured["utility"] = (_args, _kwargs)
         return {"handler": "utility"}
@@ -347,7 +355,7 @@ def test_browser_action_dispatches_to_expected_handler(
         tab_id="tab-1",
         duration=0.1,
         js_code="return 1;",
-        file_path="/tmp/a.pdf",
+        file_path=str(dispatch_pdf_path),
         key="Enter",
         clear=True,
     )
@@ -393,7 +401,7 @@ def test_browser_action_dispatches_to_expected_handler(
             "wait",
             0.1,
             "return 1;",
-            "/tmp/a.pdf",
+            str(dispatch_pdf_path),
             "tab-1",
             True,
         )
