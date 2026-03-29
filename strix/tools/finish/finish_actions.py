@@ -1,9 +1,12 @@
+"""Finish tools for scanning."""
+
 from typing import Any
 
 from strix.tools.registry import register_tool
 
 
 def _validate_root_agent(agent_state: Any) -> dict[str, Any] | None:
+    """Validate that the agent state belongs to the root agent."""
     if agent_state and hasattr(agent_state, "parent_id") and agent_state.parent_id is not None:
         return {
             "success": False,
@@ -15,6 +18,7 @@ def _validate_root_agent(agent_state: Any) -> dict[str, Any] | None:
 
 
 def _check_active_agents(agent_state: Any = None) -> dict[str, Any] | None:
+    """Check if there are any active agents remaining."""
     try:
         from strix.tools.agents_graph.agents_graph_actions import _agent_graph
 
@@ -91,6 +95,7 @@ def finish_scan(
     recommendations: str,
     agent_state: Any = None,
 ) -> dict[str, Any]:
+    """Finish the scan and record the final report."""
     validation_error = _validate_root_agent(agent_state)
     if validation_error:
         return validation_error
