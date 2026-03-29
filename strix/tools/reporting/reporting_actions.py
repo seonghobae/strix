@@ -1,3 +1,9 @@
+"""Reporting tool for vulnerability analysis and documentation.
+
+Provides functions to create and store detailed vulnerability reports
+including CVSS, code locations, and proof of concept.
+"""
+
 import contextlib
 import re
 from pathlib import PurePosixPath
@@ -19,6 +25,14 @@ _CVSS_FIELDS = (
 
 
 def parse_cvss_xml(xml_str: str) -> dict[str, str] | None:
+    """Parse CVSS breakdown from XML format.
+
+    Args:
+        xml_str: XML string containing CVSS fields.
+
+    Returns:
+        A dictionary mapping CVSS fields to their values, or None if parsing fails.
+    """
     if not xml_str or not xml_str.strip():
         return None
     result = {}
@@ -30,6 +44,14 @@ def parse_cvss_xml(xml_str: str) -> dict[str, str] | None:
 
 
 def parse_code_locations_xml(xml_str: str) -> list[dict[str, Any]] | None:
+    """Parse code locations from XML format.
+
+    Args:
+        xml_str: XML string containing one or more <location> tags.
+
+    Returns:
+        A list of parsed code location dictionaries, or None if empty or unparseable.
+    """
     if not xml_str or not xml_str.strip():
         return None
     locations = []
@@ -64,6 +86,14 @@ def parse_code_locations_xml(xml_str: str) -> list[dict[str, Any]] | None:
 
 
 def _validate_file_path(path: str) -> str | None:
+    """Validate a file path to ensure it is safe and relative.
+
+    Args:
+        path: The file path to validate.
+
+    Returns:
+        An error message string if invalid, or None if valid.
+    """
     if not path or not path.strip():
         return "file path cannot be empty"
     p = PurePosixPath(path)
@@ -75,6 +105,14 @@ def _validate_file_path(path: str) -> str | None:
 
 
 def _validate_code_locations(locations: list[dict[str, Any]]) -> list[str]:
+    """Validate a list of code location dictionaries.
+
+    Args:
+        locations: List of code location mappings containing file, start_line, end_line.
+
+    Returns:
+        A list of validation error strings, empty if all locations are valid.
+    """
     errors = []
     for i, loc in enumerate(locations):
         path_err = _validate_file_path(loc.get("file", ""))
@@ -94,22 +132,54 @@ def _validate_code_locations(locations: list[dict[str, Any]]) -> list[str]:
 
 
 def _extract_cve(cve: str) -> str:
+    """Extract standard CVE identifier from a string.
+
+    Args:
+        cve: The raw string that may contain a CVE identifier.
+
+    Returns:
+        The extracted CVE identifier or the trimmed original string.
+    """
     match = re.search(r"CVE-\d{4}-\d{4,}", cve)
     return match.group(0) if match else cve.strip()
 
 
 def _validate_cve(cve: str) -> str | None:
+    """Validate a CVE identifier format.
+
+    Args:
+        cve: The CVE identifier to validate.
+
+    Returns:
+        An error message if format is invalid, else None.
+    """
     if not re.match(r"^CVE-\d{4}-\d{4,}$", cve):
         return f"invalid CVE format: '{cve}' (expected 'CVE-YYYY-NNNNN')"
     return None
 
 
 def _extract_cwe(cwe: str) -> str:
+    """Extract standard CWE identifier from a string.
+
+    Args:
+        cwe: The raw string that may contain a CWE identifier.
+
+    Returns:
+        The extracted CWE identifier or the trimmed original string.
+    """
     match = re.search(r"CWE-\d+", cwe)
     return match.group(0) if match else cwe.strip()
 
 
 def _validate_cwe(cwe: str) -> str | None:
+    """Validate a CWE identifier format.
+
+    Args:
+        cwe: The CWE identifier to validate.
+
+    Returns:
+        An error message if format is invalid, else None.
+    """
     if not re.match(r"^CWE-\d+$", cwe):
         return f"invalid CWE format: '{cwe}' (expected 'CWE-NNN')"
     return None
@@ -125,6 +195,21 @@ def calculate_cvss_and_severity(
     integrity: str,
     availability: str,
 ) -> tuple[float, str, str]:
+    """Calculate the base CVSS v3.1 score and severity.
+
+    Args:
+        attack_vector: Network (N), Adjacent (A), Local (L), Physical (P).
+        attack_complexity: Low (L), High (H).
+        privileges_required: None (N), Low (L), High (H).
+        user_interaction: None (N), Required (R).
+        scope: Unchanged (U), Changed (C).
+        confidentiality: None (N), Low (L), High (H).
+        integrity: None (N), Low (L), High (H).
+        availability: None (N), Low (L), High (H).
+
+    Returns:
+        A tuple of (base_score, severity, cvss_vector).
+    """
     try:
         from cvss import CVSS3
 
@@ -153,6 +238,14 @@ def calculate_cvss_and_severity(
 
 
 def _validate_required_fields(**kwargs: str | None) -> list[str]:
+    """Validate that required fields for a vulnerability report are not empty.
+
+    Args:
+        **kwargs: The string fields to validate.
+
+    Returns:
+        A list of validation error messages.
+    """
     validation_errors: list[str] = []
 
     required_fields = {
@@ -175,6 +268,14 @@ def _validate_required_fields(**kwargs: str | None) -> list[str]:
 
 
 def _validate_cvss_parameters(**kwargs: str) -> list[str]:
+    """Validate CVSS parameters to ensure they match allowed values.
+
+    Args:
+        **kwargs: The CVSS fields and their values to validate.
+
+    Returns:
+        A list of validation error messages.
+    """
     validation_errors: list[str] = []
 
     cvss_validations = {
@@ -215,6 +316,27 @@ def create_vulnerability_report(  # noqa: PLR0912
     cwe: str | None = None,
     code_locations: str | None = None,
 ) -> dict[str, Any]:
+    """Create and optionally store a vulnerability report.
+
+    Args:
+        title: Short, descriptive title of the vulnerability.
+        description: Detailed explanation of the vulnerability.
+        impact: Explanation of the potential impact.
+        target: The specific system or component affected.
+        technical_analysis: Deep dive into the root cause.
+        poc_description: Description of the proof of concept.
+        poc_script_code: Actual code or script used for the PoC.
+        remediation_steps: Steps required to fix the vulnerability.
+        cvss_breakdown: XML string containing CVSS metrics.
+        endpoint: API endpoint affected, if applicable.
+        method: HTTP method used, if applicable.
+        cve: CVE identifier, if applicable.
+        cwe: CWE identifier, if applicable.
+        code_locations: XML string with file paths and line numbers.
+
+    Returns:
+        A dictionary containing the success status and messages or errors.
+    """
     validation_errors = _validate_required_fields(
         title=title,
         description=description,
