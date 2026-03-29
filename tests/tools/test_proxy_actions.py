@@ -1,4 +1,8 @@
-from unittest.mock import MagicMock, patch
+"""Tests for proxy tool actions."""
+
+import sys
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -14,14 +18,16 @@ from strix.tools.proxy.proxy_actions import (
 
 
 @pytest.fixture
-def mock_proxy_manager():
-    with patch("strix.tools.proxy.proxy_manager.get_proxy_manager") as mock_get:
-        mock_manager = MagicMock()
-        mock_get.return_value = mock_manager
-        yield mock_manager
+def mock_proxy_manager(monkeypatch: pytest.MonkeyPatch):
+    """Provide a mocked proxy manager without importing optional dependencies."""
+    mock_manager = MagicMock()
+    fake_proxy_module = SimpleNamespace(get_proxy_manager=lambda: mock_manager)
+    monkeypatch.setitem(sys.modules, "strix.tools.proxy.proxy_manager", fake_proxy_module)
+    return mock_manager
 
 
 def test_list_requests(mock_proxy_manager):
+    """Verify list_requests forwards filters and pagination to manager."""
     mock_proxy_manager.list_requests.return_value = {"status": "ok"}
     result = list_requests(
         httpql_filter="status_code:200",
@@ -39,6 +45,7 @@ def test_list_requests(mock_proxy_manager):
 
 
 def test_view_request(mock_proxy_manager):
+    """Verify view_request forwards request lookup parameters."""
     mock_proxy_manager.view_request.return_value = {"data": "test"}
     result = view_request(
         request_id="req-1", part="response", search_pattern="test", page=2, page_size=20
@@ -48,6 +55,7 @@ def test_view_request(mock_proxy_manager):
 
 
 def test_send_request(mock_proxy_manager):
+    """Verify send_request forwards method/url/headers/body arguments."""
     mock_proxy_manager.send_simple_request.return_value = {"sent": True}
 
     # Without headers
@@ -74,6 +82,7 @@ def test_send_request(mock_proxy_manager):
 
 
 def test_repeat_request(mock_proxy_manager):
+    """Verify repeat_request uses empty/default and explicit modifications."""
     mock_proxy_manager.repeat_request.return_value = {"repeated": True}
 
     # Without modifications
@@ -91,6 +100,7 @@ def test_repeat_request(mock_proxy_manager):
 
 
 def test_scope_rules(mock_proxy_manager):
+    """Verify scope_rules forwards scope policy arguments."""
     mock_proxy_manager.scope_rules.return_value = {"rules": "updated"}
     result = scope_rules(
         action="update",
@@ -106,6 +116,7 @@ def test_scope_rules(mock_proxy_manager):
 
 
 def test_list_sitemap(mock_proxy_manager):
+    """Verify list_sitemap forwards scope and traversal parameters."""
     mock_proxy_manager.list_sitemap.return_value = {"sitemap": []}
     result = list_sitemap(scope_id="scope-1", parent_id="parent-2", depth="ALL", page=3)
     assert result == {"sitemap": []}
@@ -113,6 +124,7 @@ def test_list_sitemap(mock_proxy_manager):
 
 
 def test_view_sitemap_entry(mock_proxy_manager):
+    """Verify view_sitemap_entry forwards entry identifier."""
     mock_proxy_manager.view_sitemap_entry.return_value = {"entry": {}}
     result = view_sitemap_entry(entry_id="entry-1")
     assert result == {"entry": {}}
