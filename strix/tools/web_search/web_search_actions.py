@@ -1,3 +1,5 @@
+"""Web search tool actions for interacting with the Perplexity API."""
+
 import os
 from typing import Any
 
@@ -33,6 +35,15 @@ security implications and details."""
 
 @register_tool(sandbox_execution=False, requires_web_search_mode=True)
 def web_search(query: str) -> dict[str, Any]:
+    """Execute a web search using the Perplexity API with a cybersecurity focus.
+
+    Args:
+        query: The search query to execute.
+
+    Returns:
+        A dictionary containing the search results, including 'success', 'message',
+        and either 'content' or 'results' depending on the outcome.
+    """
     try:
         api_key = os.getenv("PERPLEXITY_API_KEY")
         if not api_key:
