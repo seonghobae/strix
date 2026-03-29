@@ -1,3 +1,5 @@
+"""Proxy actions module."""
+
 from typing import Any, Literal
 
 from strix.tools.registry import register_tool
@@ -25,6 +27,7 @@ def list_requests(
     sort_order: Literal["asc", "desc"] = "desc",
     scope_id: str | None = None,
 ) -> dict[str, Any]:
+    """List requests with optional filtering and sorting."""
     from .proxy_manager import get_proxy_manager
 
     manager = get_proxy_manager()
@@ -41,6 +44,7 @@ def view_request(
     page: int = 1,
     page_size: int = 50,
 ) -> dict[str, Any]:
+    """View a specific request or response."""
     from .proxy_manager import get_proxy_manager
 
     manager = get_proxy_manager()
@@ -55,6 +59,7 @@ def send_request(
     body: str = "",
     timeout: int = 30,
 ) -> dict[str, Any]:
+    """Send a new HTTP request."""
     from .proxy_manager import get_proxy_manager
 
     if headers is None:
@@ -68,6 +73,7 @@ def repeat_request(
     request_id: str,
     modifications: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Repeat an existing request, optionally with modifications."""
     from .proxy_manager import get_proxy_manager
 
     if modifications is None:
@@ -84,6 +90,7 @@ def scope_rules(
     scope_id: str | None = None,
     scope_name: str | None = None,
 ) -> dict[str, Any]:
+    """Manage scope rules."""
     from .proxy_manager import get_proxy_manager
 
     manager = get_proxy_manager()
@@ -97,6 +104,7 @@ def list_sitemap(
     depth: Literal["DIRECT", "ALL"] = "DIRECT",
     page: int = 1,
 ) -> dict[str, Any]:
+    """List entries in the sitemap."""
     from .proxy_manager import get_proxy_manager
 
     manager = get_proxy_manager()
@@ -107,6 +115,7 @@ def list_sitemap(
 def view_sitemap_entry(
     entry_id: str,
 ) -> dict[str, Any]:
+    """View details of a specific sitemap entry."""
     from .proxy_manager import get_proxy_manager
 
     manager = get_proxy_manager()
