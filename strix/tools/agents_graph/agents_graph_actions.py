@@ -1,5 +1,5 @@
 import threading
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 from strix.tools.registry import register_tool
@@ -84,7 +84,9 @@ def _run_agent_in_thread(
 
     except Exception as e:
         _agent_graph["nodes"][state.agent_id]["status"] = "error"
-        _agent_graph["nodes"][state.agent_id]["finished_at"] = datetime.now(UTC).isoformat()
+        _agent_graph["nodes"][state.agent_id]["finished_at"] = datetime.now(
+            timezone.utc
+        ).isoformat()
         _agent_graph["nodes"][state.agent_id]["result"] = {"error": str(e)}
         _running_agents.pop(state.agent_id, None)
         _agent_instances.pop(state.agent_id, None)
@@ -94,7 +96,9 @@ def _run_agent_in_thread(
             _agent_graph["nodes"][state.agent_id]["status"] = "stopped"
         else:
             _agent_graph["nodes"][state.agent_id]["status"] = "completed"
-        _agent_graph["nodes"][state.agent_id]["finished_at"] = datetime.now(UTC).isoformat()
+        _agent_graph["nodes"][state.agent_id]["finished_at"] = datetime.now(
+            timezone.utc
+        ).isoformat()
         _agent_graph["nodes"][state.agent_id]["result"] = result
         _running_agents.pop(state.agent_id, None)
         _agent_instances.pop(state.agent_id, None)
@@ -303,7 +307,7 @@ def send_message_to_agent(
             "content": message,
             "message_type": message_type,
             "priority": priority,
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "delivered": False,
             "read": False,
         }
@@ -321,7 +325,7 @@ def send_message_to_agent(
                 "message_id": message_id,
                 "message_type": message_type,
                 "priority": priority,
-                "created_at": datetime.now(UTC).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -374,7 +378,7 @@ def agent_finish(
         agent_node = _agent_graph["nodes"][agent_id]
 
         agent_node["status"] = "finished" if success else "failed"
-        agent_node["finished_at"] = datetime.now(UTC).isoformat()
+        agent_node["finished_at"] = datetime.now(timezone.utc).isoformat()
         agent_node["result"] = {
             "summary": result_summary,
             "findings": findings or [],
@@ -428,7 +432,7 @@ def agent_finish(
                         "content": report_message,
                         "message_type": "information",
                         "priority": "high",
-                        "timestamp": datetime.now(UTC).isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                         "delivered": True,
                         "read": False,
                     }
@@ -546,7 +550,7 @@ def send_user_message_to_agent(agent_id: str, message: str) -> dict[str, Any]:
             "content": message,
             "message_type": "instruction",
             "priority": "high",
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "delivered": True,
             "read": False,
         }

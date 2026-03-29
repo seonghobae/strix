@@ -3,7 +3,7 @@ import logging
 import re
 import threading
 from collections.abc import Callable, Sequence
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -119,7 +119,7 @@ def iso_from_unix_ns(unix_ns: int | None) -> str | None:
     if unix_ns is None:
         return None
     try:
-        return datetime.fromtimestamp(unix_ns / 1_000_000_000, tz=UTC).isoformat()
+        return datetime.fromtimestamp(unix_ns / 1_000_000_000, tz=timezone.utc).isoformat()
     except (OSError, OverflowError, ValueError):
         return None
 
@@ -271,7 +271,7 @@ class JsonlSpanExporter(SpanExporter):  # type: ignore[misc]
         )
 
         record: dict[str, Any] = {
-            "timestamp": iso_from_unix_ns(span.end_time) or datetime.now(UTC).isoformat(),
+            "timestamp": iso_from_unix_ns(span.end_time) or datetime.now(timezone.utc).isoformat(),
             "event_type": event_type,
             "run_id": str(run_id_attr or run_metadata.get("run_id") or ""),
             "trace_id": format_trace_id(span_context.trace_id),

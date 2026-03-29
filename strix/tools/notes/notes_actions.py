@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from strix.tools.registry import register_tool
@@ -62,7 +62,7 @@ def create_note(
             }
 
         note_id = str(uuid.uuid4())[:5]
-        timestamp = datetime.now(UTC).isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
 
         note = {
             "title": title.strip(),
@@ -135,7 +135,7 @@ def update_note(
         if tags is not None:
             note["tags"] = tags
 
-        note["updated_at"] = datetime.now(UTC).isoformat()
+        note["updated_at"] = datetime.now(timezone.utc).isoformat()
 
         return {
             "success": True,

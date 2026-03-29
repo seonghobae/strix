@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from strix.tools.registry import register_tool
@@ -197,7 +197,7 @@ def create_todo(
         for task in tasks_to_create:
             task_priority = _normalize_priority(task.get("priority"), default_priority)
             todo_id = str(uuid.uuid4())[:6]
-            timestamp = datetime.now(UTC).isoformat()
+            timestamp = datetime.now(timezone.utc).isoformat()
 
             todo = {
                 "title": task["title"],
@@ -333,11 +333,11 @@ def _apply_single_update(
             }
         todo["status"] = status_candidate
         if status_candidate == "done":
-            todo["completed_at"] = datetime.now(UTC).isoformat()
+            todo["completed_at"] = datetime.now(timezone.utc).isoformat()
         else:
             todo["completed_at"] = None
 
-    todo["updated_at"] = datetime.now(UTC).isoformat()
+    todo["updated_at"] = datetime.now(timezone.utc).isoformat()
     return None
 
 
@@ -434,7 +434,7 @@ def mark_todo_done(
 
         marked: list[str] = []
         errors: list[dict[str, Any]] = []
-        timestamp = datetime.now(UTC).isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
 
         for tid in ids_to_mark:
             if tid not in agent_todos:
@@ -487,7 +487,7 @@ def mark_todo_pending(
 
         marked: list[str] = []
         errors: list[dict[str, Any]] = []
-        timestamp = datetime.now(UTC).isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
 
         for tid in ids_to_mark:
             if tid not in agent_todos:

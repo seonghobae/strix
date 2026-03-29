@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -32,8 +32,8 @@ class AgentState(BaseModel):
     messages: list[dict[str, Any]] = Field(default_factory=list)
     context: dict[str, Any] = Field(default_factory=dict)
 
-    start_time: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
-    last_updated: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    start_time: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    last_updated: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     actions_taken: list[dict[str, Any]] = Field(default_factory=list)
     observations: list[dict[str, Any]] = Field(default_factory=list)
@@ -42,7 +42,7 @@ class AgentState(BaseModel):
 
     def increment_iteration(self) -> None:
         self.iteration += 1
-        self.last_updated = datetime.now(UTC).isoformat()
+        self.last_updated = datetime.now(timezone.utc).isoformat()
 
     def add_message(
         self, role: str, content: Any, thinking_blocks: list[dict[str, Any]] | None = None
@@ -51,13 +51,13 @@ class AgentState(BaseModel):
         if thinking_blocks:
             message["thinking_blocks"] = thinking_blocks
         self.messages.append(message)
-        self.last_updated = datetime.now(UTC).isoformat()
+        self.last_updated = datetime.now(timezone.utc).isoformat()
 
     def add_action(self, action: dict[str, Any]) -> None:
         self.actions_taken.append(
             {
                 "iteration": self.iteration,
-                "timestamp": datetime.now(UTC).isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "action": action,
             }
         )
@@ -66,27 +66,27 @@ class AgentState(BaseModel):
         self.observations.append(
             {
                 "iteration": self.iteration,
-                "timestamp": datetime.now(UTC).isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "observation": observation,
             }
         )
 
     def add_error(self, error: str) -> None:
         self.errors.append(f"Iteration {self.iteration}: {error}")
-        self.last_updated = datetime.now(UTC).isoformat()
+        self.last_updated = datetime.now(timezone.utc).isoformat()
 
     def update_context(self, key: str, value: Any) -> None:
         self.context[key] = value
-        self.last_updated = datetime.now(UTC).isoformat()
+        self.last_updated = datetime.now(timezone.utc).isoformat()
 
     def set_completed(self, final_result: dict[str, Any] | None = None) -> None:
         self.completed = True
         self.final_result = final_result
-        self.last_updated = datetime.now(UTC).isoformat()
+        self.last_updated = datetime.now(timezone.utc).isoformat()
 
     def request_stop(self) -> None:
         self.stop_requested = True
-        self.last_updated = datetime.now(UTC).isoformat()
+        self.last_updated = datetime.now(timezone.utc).isoformat()
 
     def should_stop(self) -> bool:
         return self.stop_requested or self.completed or self.has_reached_max_iterations()
@@ -96,9 +96,9 @@ class AgentState(BaseModel):
 
     def enter_waiting_state(self, llm_failed: bool = False) -> None:
         self.waiting_for_input = True
-        self.waiting_start_time = datetime.now(UTC)
+        self.waiting_start_time = datetime.now(timezone.utc)
         self.llm_failed = llm_failed
-        self.last_updated = datetime.now(UTC).isoformat()
+        self.last_updated = datetime.now(timezone.utc).isoformat()
 
     def resume_from_waiting(self, new_task: str | None = None) -> None:
         self.waiting_for_input = False
@@ -108,7 +108,7 @@ class AgentState(BaseModel):
         self.llm_failed = False
         if new_task:
             self.task = new_task
-        self.last_updated = datetime.now(UTC).isoformat()
+        self.last_updated = datetime.now(timezone.utc).isoformat()
 
     def has_reached_max_iterations(self) -> bool:
         return self.iteration >= self.max_iterations
@@ -131,7 +131,7 @@ class AgentState(BaseModel):
         ):
             return False
 
-        elapsed = (datetime.now(UTC) - self.waiting_start_time).total_seconds()
+        elapsed = (datetime.now(timezone.utc) - self.waiting_start_time).total_seconds()
         return elapsed > self.waiting_timeout
 
     def has_empty_last_messages(self, count: int = 3) -> bool:

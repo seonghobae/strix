@@ -2,7 +2,7 @@ import json
 import logging
 import threading
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 from uuid import uuid4
@@ -50,7 +50,7 @@ class Tracer:
     def __init__(self, run_name: str | None = None):
         self.run_name = run_name
         self.run_id = run_name or f"run-{uuid4().hex[:8]}"
-        self.start_time = datetime.now(UTC).isoformat()
+        self.start_time = datetime.now(timezone.utc).isoformat()
         self.end_time: str | None = None
 
         self.agents: dict[str, dict[str, Any]] = {}
@@ -250,7 +250,7 @@ class Tracer:
             span_id = format_span_id(uuid4().int & ((1 << 64) - 1)) or uuid4().hex[:16]
 
         record = {
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "event_type": event_type,
             "run_id": self.run_id,
             "trace_id": trace_id,
@@ -329,7 +329,7 @@ class Tracer:
             "id": report_id,
             "title": title.strip(),
             "severity": severity.lower().strip(),
-            "timestamp": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S timezone.utc"),
         }
 
         if description:
@@ -452,8 +452,8 @@ class Tracer:
             "task": task,
             "status": "running",
             "parent_id": parent_id,
-            "created_at": datetime.now(UTC).isoformat(),
-            "updated_at": datetime.now(UTC).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
             "tool_executions": [],
         }
 
@@ -481,7 +481,7 @@ class Tracer:
             "content": content,
             "role": role,
             "agent_id": agent_id,
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "metadata": metadata or {},
         }
 
@@ -504,7 +504,7 @@ class Tracer:
         execution_id = self._next_execution_id
         self._next_execution_id += 1
 
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         execution_data = {
             "execution_id": execution_id,
             "agent_id": agent_id,
@@ -548,7 +548,7 @@ class Tracer:
         tool_data = self.tool_executions[execution_id]
         tool_data["status"] = status
         tool_data["result"] = result
-        tool_data["completed_at"] = datetime.now(UTC).isoformat()
+        tool_data["completed_at"] = datetime.now(timezone.utc).isoformat()
 
         tool_name = str(tool_data.get("tool_name", "unknown"))
         agent_id = str(tool_data.get("agent_id", "unknown"))
@@ -586,7 +586,7 @@ class Tracer:
     ) -> None:
         if agent_id in self.agents:
             self.agents[agent_id]["status"] = status
-            self.agents[agent_id]["updated_at"] = datetime.now(UTC).isoformat()
+            self.agents[agent_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
             if error_message:
                 self.agents[agent_id]["error_message"] = error_message
 
@@ -628,7 +628,7 @@ class Tracer:
             run_dir = self.get_run_dir()
             if mark_complete:
                 if self.end_time is None:
-                    self.end_time = datetime.now(UTC).isoformat()
+                    self.end_time = datetime.now(timezone.utc).isoformat()
                 self.run_metadata["end_time"] = self.end_time
                 self.run_metadata["status"] = "completed"
 
@@ -637,7 +637,7 @@ class Tracer:
                 with penetration_test_report_file.open("w", encoding="utf-8") as f:
                     f.write("# Security Penetration Test Report\n\n")
                     f.write(
-                        f"**Generated:** {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n"
+                        f"**Generated:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S timezone.utc')}\n\n"
                     )
                     f.write(f"{self.final_scan_result}\n")
                 logger.info(
