@@ -269,3 +269,32 @@ class TestArgumentConversionError:
         error = ArgumentConversionError("Test error")
         assert error.param_name is None
         assert str(error) == "Test error"
+
+    def test_inspect_signature_failure(self) -> None:
+        """Test that ArgumentConversionError is raised if inspect.signature fails."""
+        # Built-in functions like id usually fail with inspect.signature in some Python versions,
+        # but to be safe, we can pass a non-callable to trigger a TypeError.
+        with pytest.raises(ArgumentConversionError, match="Failed to process function arguments"):
+            convert_arguments("not_a_function", {"kwarg": "val"})  # type: ignore[arg-type]
+
+    def test_union_all_fail(self) -> None:
+        """Test union type where all conversions fail returns the original string."""
+        # Int and float conversions will both fail for "not_a_number"
+        result = convert_string_to_type("not_a_number", int | float)
+        assert result == "not_a_number"
+
+    def test_optional_fallback(self) -> None:
+        """Test optional type fallback."""
+        result = convert_string_to_type("not_a_number", int | None)
+        assert result == "not_a_number"
+
+    def test_custom_optional_like_type(self) -> None:
+        """Test fallback for types that have __args__ like Optional but aren't typing.Union."""
+        class MockOptionalType:
+            __args__ = (int, type(None))
+
+        # Successfully converts
+        assert convert_string_to_type("123", MockOptionalType) == 123
+
+        # Fails to convert, returns original string
+        assert convert_string_to_type("not_a_number", MockOptionalType) == "not_a_number"
