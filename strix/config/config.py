@@ -1,3 +1,5 @@
+"""Configuration module for Strix."""
+
 import contextlib
 import json
 import os
@@ -9,7 +11,11 @@ STRIX_API_BASE = "https://models.strix.ai/api/v1"
 
 
 class Config:
-    """Configuration Manager for Strix."""
+    """Configuration Manager for Strix.
+
+    Provides methods to read, write, and apply configurations
+    from environment variables and a local JSON file.
+    """
 
     # LLM Configuration
     strix_llm = None
@@ -58,6 +64,11 @@ class Config:
 
     @classmethod
     def _tracked_names(cls) -> list[str]:
+        """Return the list of attribute names that are tracked for configuration.
+
+        Returns:
+            list[str]: Tracked attribute names.
+        """
         return [
             k
             for k, v in vars(cls).items()
@@ -66,14 +77,32 @@ class Config:
 
     @classmethod
     def tracked_vars(cls) -> list[str]:
+        """Return the uppercase versions of tracked attribute names.
+
+        Returns:
+            list[str]: Uppercase tracked attribute names (for environment variables).
+        """
         return [name.upper() for name in cls._tracked_names()]
 
     @classmethod
     def _llm_env_vars(cls) -> set[str]:
+        """Return the set of uppercase LLM-related environment variable names.
+
+        Returns:
+            set[str]: Set of LLM environment variables.
+        """
         return {name.upper() for name in cls._LLM_CANONICAL_NAMES}
 
     @classmethod
     def _llm_env_changed(cls, saved_env: dict[str, Any]) -> bool:
+        """Check whether any tracked LLM environment variable has changed compared to saved_env.
+
+        Args:
+            saved_env: The saved environment variables.
+
+        Returns:
+            bool: True if an LLM environment variable has changed, False otherwise.
+        """
         for var_name in cls._llm_env_vars():
             current = os.getenv(var_name)
             if current is None:
@@ -84,22 +113,45 @@ class Config:
 
     @classmethod
     def get(cls, name: str) -> str | None:
+        """Get the value of a configuration variable by name.
+
+        Args:
+            name: The lowercase name of the configuration attribute.
+
+        Returns:
+            str | None: The configuration value or None.
+        """
         env_name = name.upper()
         default = getattr(cls, name, None)
         return os.getenv(env_name, default)
 
     @classmethod
     def config_dir(cls) -> Path:
+        """Return the directory where Strix configuration is stored.
+
+        Returns:
+            Path: The configuration directory path.
+        """
         return Path.home() / ".strix"
 
     @classmethod
     def config_file(cls) -> Path:
+        """Return the path to the configuration file.
+
+        Returns:
+            Path: The path to the configuration file.
+        """
         if cls._config_file_override is not None:
             return cls._config_file_override
         return cls.config_dir() / "cli-config.json"
 
     @classmethod
     def load(cls) -> dict[str, Any]:
+        """Load configuration data from the JSON file.
+
+        Returns:
+            dict[str, Any]: The loaded configuration data.
+        """
         path = cls.config_file()
         if not path.exists():
             return {}
@@ -112,6 +164,14 @@ class Config:
 
     @classmethod
     def save(cls, config: dict[str, Any]) -> bool:
+        """Save configuration data to the JSON file.
+
+        Args:
+            config: The configuration data to save.
+
+        Returns:
+            bool: True if saving succeeded, False otherwise.
+        """
         try:
             cls.config_dir().mkdir(parents=True, exist_ok=True)
             config_path = cls.config_dir() / "cli-config.json"
@@ -125,6 +185,14 @@ class Config:
 
     @classmethod
     def apply_saved(cls, force: bool = False) -> dict[str, str]:
+        """Apply saved environment variables to os.environ.
+
+        Args:
+            force: Whether to overwrite existing os.environ variables.
+
+        Returns:
+            dict[str, str]: The dictionary of applied environment variables.
+        """
         saved = cls.load()
         env_vars = saved.get("env", {})
         if not isinstance(env_vars, dict):
@@ -155,6 +223,11 @@ class Config:
 
     @classmethod
     def capture_current(cls) -> dict[str, Any]:
+        """Capture the current tracked environment variables.
+
+        Returns:
+            dict[str, Any]: The captured environment state.
+        """
         env_vars = {}
         for var_name in cls.tracked_vars():
             value = os.getenv(var_name)
@@ -164,6 +237,11 @@ class Config:
 
     @classmethod
     def save_current(cls) -> bool:
+        """Save the current environment variables incrementally.
+
+        Returns:
+            bool: True if saving succeeded, False otherwise.
+        """
         existing = cls.load().get("env", {})
         merged = dict(existing)
 
@@ -180,10 +258,23 @@ class Config:
 
 
 def apply_saved_config(force: bool = False) -> dict[str, str]:
+    """Apply saved configuration to the environment.
+
+    Args:
+        force: Overwrite existing variables.
+
+    Returns:
+        dict[str, str]: The applied variables.
+    """
     return Config.apply_saved(force=force)
 
 
 def save_current_config() -> bool:
+    """Save the current environment configuration incrementally.
+
+    Returns:
+        bool: True if successful, False otherwise.
+    """
     return Config.save_current()
 
 
