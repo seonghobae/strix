@@ -3,8 +3,6 @@ import sys
 import threading
 from typing import Any
 
-from IPython.core.interactiveshell import InteractiveShell
-
 
 MAX_STDOUT_LENGTH = 10_000
 MAX_STDERR_LENGTH = 5_000
@@ -12,6 +10,8 @@ MAX_STDERR_LENGTH = 5_000
 
 class PythonInstance:
     def __init__(self, session_id: str) -> None:
+        from IPython.core.interactiveshell import InteractiveShell
+
         self.session_id = session_id
         self.is_running = True
         self._execution_lock = threading.Lock()
