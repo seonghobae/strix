@@ -1,3 +1,5 @@
+"""Skill loading tool for dynamically loading skills into agent prompts."""
+
 from typing import Any
 
 from strix.tools.registry import register_tool
@@ -5,6 +7,7 @@ from strix.tools.registry import register_tool
 
 @register_tool(sandbox_execution=False)
 def load_skill(agent_state: Any, skills: str) -> dict[str, Any]:
+    """Load specified skills into the agent's LLM context dynamically."""
     try:
         from strix.skills import parse_skill_list, validate_requested_skills
 
