@@ -1,3 +1,5 @@
+"""Core module for executing tools locally or remotely in sandboxes."""
+
 import inspect
 import os
 from typing import Any
@@ -27,6 +29,16 @@ SANDBOX_CONNECT_TIMEOUT = float(Config.get("strix_sandbox_connect_timeout") or "
 
 
 async def execute_tool(tool_name: str, agent_state: Any | None = None, **kwargs: Any) -> Any:
+    """Execute a tool by name, routing it to either local execution or a sandbox.
+
+    Args:
+        tool_name: The name of the tool to execute.
+        agent_state: Optional agent state passed to the tool.
+        **kwargs: Additional keyword arguments for the tool.
+
+    Returns:
+        The result of the tool execution.
+    """
     execute_in_sandbox = should_execute_in_sandbox(tool_name)
     sandbox_mode = os.getenv("STRIX_SANDBOX_MODE", "false").lower() == "true"
 
@@ -37,6 +49,20 @@ async def execute_tool(tool_name: str, agent_state: Any | None = None, **kwargs:
 
 
 async def _execute_tool_in_sandbox(tool_name: str, agent_state: Any, **kwargs: Any) -> Any:
+    """Execute a tool remotely in a sandbox environment.
+
+    Args:
+        tool_name: The name of the tool to execute.
+        agent_state: The agent state, which must contain sandbox connection info.
+        **kwargs: Arguments to pass to the remote tool.
+
+    Returns:
+        The deserialized JSON result from the remote tool server.
+
+    Raises:
+        ValueError: If agent state lacks sandbox credentials or info.
+        RuntimeError: If the HTTP request fails, returns an error, or times out.
+    """
     if not hasattr(agent_state, "sandbox_id") or not agent_state.sandbox_id:
         raise ValueError("Agent state with a valid sandbox_id is required for sandbox execution.")
 
@@ -99,6 +125,20 @@ async def _execute_tool_in_sandbox(tool_name: str, agent_state: Any, **kwargs: A
 
 
 async def _execute_tool_locally(tool_name: str, agent_state: Any | None, **kwargs: Any) -> Any:
+    """Execute a tool locally in the current process.
+
+    Args:
+        tool_name: The name of the tool to execute.
+        agent_state: Optional state to pass to the tool if needed.
+        **kwargs: Additional arguments for the tool.
+
+    Returns:
+        The result returned by the locally executed tool.
+
+    Raises:
+        ValueError: If the tool is not found, or if it requires agent_state
+            but none was provided.
+    """
     tool_func = get_tool_by_name(tool_name)
     if not tool_func:
         raise ValueError(f"Tool '{tool_name}' not found")
@@ -116,6 +156,14 @@ async def _execute_tool_locally(tool_name: str, agent_state: Any | None, **kwarg
 
 
 def validate_tool_availability(tool_name: str | None) -> tuple[bool, str]:
+    """Check if a tool exists in the registry.
+
+    Args:
+        tool_name: The tool name to check.
+
+    Returns:
+        A tuple of (is_valid, error_message).
+    """
     if tool_name is None:
         available = ", ".join(sorted(get_tool_names()))
         return False, f"Tool name is missing. Available tools: {available}"
@@ -128,6 +176,15 @@ def validate_tool_availability(tool_name: str | None) -> tuple[bool, str]:
 
 
 def _validate_tool_arguments(tool_name: str, kwargs: dict[str, Any]) -> str | None:
+    """Validate arguments for a specific tool.
+
+    Args:
+        tool_name: The name of the tool.
+        kwargs: The arguments provided to the tool.
+
+    Returns:
+        An error message string if validation fails, or None if valid.
+    """
     param_schema = get_tool_param_schema(tool_name)
     if not param_schema or not param_schema.get("has_params"):
         return None
@@ -154,6 +211,16 @@ def _validate_tool_arguments(tool_name: str, kwargs: dict[str, Any]) -> str | No
 
 
 def _format_schema_hint(tool_name: str, required: set[str], optional: set[str]) -> str:
+    """Format a hint string describing a tool's parameters.
+
+    Args:
+        tool_name: The tool's name.
+        required: The set of required parameters.
+        optional: The set of optional parameters.
+
+    Returns:
+        A formatted hint string showing valid parameters.
+    """
     parts = [f"Valid parameters for '{tool_name}':"]
     if required:
         parts.append(f"  Required: {', '.join(sorted(required))}")
@@ -165,6 +232,16 @@ def _format_schema_hint(tool_name: str, required: set[str], optional: set[str]) 
 async def execute_tool_with_validation(
     tool_name: str | None, agent_state: Any | None = None, **kwargs: Any
 ) -> Any:
+    """Validate a tool and its arguments before executing it.
+
+    Args:
+        tool_name: The tool to execute.
+        agent_state: The optional state for the tool.
+        **kwargs: The tool's arguments.
+
+    Returns:
+        The tool's result, or an error string if validation or execution fails.
+    """
     is_valid, error_msg = validate_tool_availability(tool_name)
     if not is_valid:
         return f"Error: {error_msg}"
@@ -187,6 +264,15 @@ async def execute_tool_with_validation(
 
 
 async def execute_tool_invocation(tool_inv: dict[str, Any], agent_state: Any | None = None) -> Any:
+    """Extract tool details from an invocation dict and execute.
+
+    Args:
+        tool_inv: The tool invocation dict, containing 'toolName' and 'args'.
+        agent_state: The optional agent state.
+
+    Returns:
+        The executed tool's result.
+    """
     tool_name = tool_inv.get("toolName")
     tool_args = tool_inv.get("args", {})
 
@@ -194,6 +280,14 @@ async def execute_tool_invocation(tool_inv: dict[str, Any], agent_state: Any | N
 
 
 def _check_error_result(result: Any) -> tuple[bool, Any]:
+    """Check if the executed tool's result represents an error.
+
+    Args:
+        result: The result from a tool execution.
+
+    Returns:
+        A tuple of (is_error, error_payload).
+    """
     is_error = False
     error_payload: Any = None
 
@@ -209,6 +303,15 @@ def _check_error_result(result: Any) -> tuple[bool, Any]:
 def _update_tracer_with_result(
     tracer: Any, execution_id: Any, is_error: bool, result: Any, error_payload: Any
 ) -> None:
+    """Update telemetry tracer with the outcome of a tool execution.
+
+    Args:
+        tracer: The global telemetry tracer.
+        execution_id: The execution ID for this tool invocation.
+        is_error: Whether the tool failed.
+        result: The tool's success result payload.
+        error_payload: The tool's error payload.
+    """
     if not tracer or not execution_id:
         return
 
@@ -225,6 +328,15 @@ def _update_tracer_with_result(
 
 
 def _format_tool_result(tool_name: str, result: Any) -> tuple[str, list[dict[str, Any]]]:
+    """Format the raw tool result into an XML string and extract images.
+
+    Args:
+        tool_name: The name of the executed tool.
+        result: The raw result object.
+
+    Returns:
+        A tuple containing the formatted XML observation string and a list of images.
+    """
     images: list[dict[str, Any]] = []
 
     screenshot_data = extract_screenshot_from_result(result)
@@ -262,6 +374,17 @@ async def _execute_single_tool(
     tracer: Any | None,
     agent_id: str,
 ) -> tuple[str, list[dict[str, Any]], bool]:
+    """Execute a single tool invocation, trace it, and format the output.
+
+    Args:
+        tool_inv: The tool invocation dict.
+        agent_state: Optional state.
+        tracer: The global tracer or None.
+        agent_id: The ID of the agent executing the tool.
+
+    Returns:
+        A tuple containing (observation_xml, images, should_agent_finish).
+    """
     tool_name = tool_inv.get("toolName", "unknown")
     args = tool_inv.get("args", {})
     execution_id = None
@@ -298,6 +421,14 @@ async def _execute_single_tool(
 
 
 def _get_tracer_and_agent_id(agent_state: Any | None) -> tuple[Any | None, str]:
+    """Retrieve the global tracer and agent ID.
+
+    Args:
+        agent_state: The optional state containing the agent_id.
+
+    Returns:
+        A tuple of (tracer, agent_id).
+    """
     try:
         from strix.telemetry.tracer import get_global_tracer
 
@@ -315,6 +446,17 @@ async def process_tool_invocations(
     conversation_history: list[dict[str, Any]],
     agent_state: Any | None = None,
 ) -> bool:
+    """Process multiple tool invocations and update conversation history.
+
+    Args:
+        tool_invocations: List of tool invocation objects.
+        conversation_history: The current conversation history list.
+        agent_state: The optional state.
+
+    Returns:
+        A boolean indicating whether the agent should finish based on
+        tool executions.
+    """
     observation_parts: list[str] = []
     all_images: list[dict[str, Any]] = []
     should_agent_finish = False
@@ -343,6 +485,14 @@ async def process_tool_invocations(
 
 
 def extract_screenshot_from_result(result: Any) -> str | None:
+    """Extract a base64 screenshot string from a tool result if present.
+
+    Args:
+        result: The output from a tool execution.
+
+    Returns:
+        The base64 encoded screenshot string, or None if not found.
+    """
     if not isinstance(result, dict):
         return None
 
@@ -354,6 +504,14 @@ def extract_screenshot_from_result(result: Any) -> str | None:
 
 
 def remove_screenshot_from_result(result: Any) -> Any:
+    """Return a copy of the result dict with the screenshot data replaced by a placeholder.
+
+    Args:
+        result: The output from a tool execution.
+
+    Returns:
+        The result with the screenshot data removed.
+    """
     if not isinstance(result, dict):
         return result
 
