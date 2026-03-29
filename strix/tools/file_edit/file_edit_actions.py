@@ -1,3 +1,5 @@
+"""File edit actions for Strix."""
+
 import json
 import re
 from pathlib import Path
@@ -7,6 +9,7 @@ from strix.tools.registry import register_tool
 
 
 def _parse_file_editor_output(output: str) -> dict[str, Any]:
+    """Parse the output from the file editor."""
     try:
         pattern = r"<oh_aci_output_[^>]+>\n(.*?)\n</oh_aci_output_[^>]+>"
         match = re.search(pattern, output, re.DOTALL)
@@ -30,6 +33,7 @@ def str_replace_editor(
     new_str: str | None = None,
     insert_line: int | None = None,
 ) -> dict[str, Any]:
+    """Edit files using string replacement."""
     from openhands_aci import file_editor
 
     try:
@@ -63,6 +67,7 @@ def list_files(
     path: str,
     recursive: bool = False,
 ) -> dict[str, Any]:
+    """List files in a directory."""
     from openhands_aci.utils.shell import run_shell_cmd
 
     try:
@@ -117,6 +122,7 @@ def search_files(
     regex: str,
     file_pattern: str = "*",
 ) -> dict[str, Any]:
+    """Search for a regex pattern in files."""
     from openhands_aci.utils.shell import run_shell_cmd
 
     try:
