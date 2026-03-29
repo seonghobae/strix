@@ -38,6 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       security-events: write   # required for code-scanning SARIF upload
+      contents: read
     needs: test
     if: github.event_name != 'pull_request'
 
