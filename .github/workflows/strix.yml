@@ -1,6 +1,7 @@
+---
 name: Strix
 
-on:
+'on':
   push:
     branches:
       - main
@@ -63,14 +64,19 @@ jobs:
           sys.path.insert(0, ".")
           from strix.sarif import to_sarif, upload_sarif_to_github
 
-          # Synthetic finding so the workflow is self-contained (no live scan target needed).
+          # Synthetic finding so the workflow is self-contained
+          # (no live scan target needed).
           reports = [
               {
                   "id": "strix-workflow-001",
                   "title": "Strix workflow integration test",
                   "severity": "low",
-                  "description": "Synthetic finding created by the Strix CI workflow.",
-                  "remediation_steps": "No action needed – this is a synthetic CI test result.",
+                  "description": (
+                      "Synthetic finding created by the Strix CI workflow."
+                  ),
+                  "remediation_steps": (
+                      "No action needed – this is a synthetic CI test result."
+                  ),
                   "cvss": 1.0,
                   "cwe": "CWE-0",
                   "target": "https://example.com",
@@ -89,7 +95,9 @@ jobs:
           sarif = to_sarif(reports, tool_version="ci-test")
 
           token = os.environ["GITHUB_TOKEN"]
-          repo  = os.environ.get("GITHUB_REPOSITORY", "${{ github.repository }}")
+          repo  = os.environ.get(
+              "GITHUB_REPOSITORY", "${{ github.repository }}"
+          )
           ref   = os.environ["GITHUB_REF"]
           sha   = os.environ["GITHUB_SHA"]
 
