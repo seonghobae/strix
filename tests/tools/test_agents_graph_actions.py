@@ -269,7 +269,7 @@ def test_create_agent_success_paths(monkeypatch: pytest.MonkeyPatch) -> None:
             parent_id: str,
             max_iterations: int,
             waiting_timeout: int,
-        ):
+        ) -> None:
             self.task = task
             self.agent_name = agent_name
             self.parent_id = parent_id
@@ -279,8 +279,13 @@ def test_create_agent_success_paths(monkeypatch: pytest.MonkeyPatch) -> None:
 
     class FakeLLMConfig:
         def __init__(
-            self, skills: list[str], timeout: int | None, scan_mode: str, interactive: bool
-        ):
+            self,
+            skills: list[str],
+            timeout: int | None,
+            scan_mode: str,
+            *,
+            interactive: bool,
+        ) -> None:
             self.skills = skills
             self.timeout = timeout
             self.scan_mode = scan_mode
@@ -295,7 +300,12 @@ def test_create_agent_success_paths(monkeypatch: pytest.MonkeyPatch) -> None:
 
     class FakeThread:
         def __init__(
-            self, target: object, args: tuple[object, ...], daemon: bool, name: str
+            self,
+            target: object,
+            args: tuple[object, ...],
+            *,
+            daemon: bool,
+            name: str,
         ) -> None:
             self.target = target
             self.args = args
