@@ -1,6 +1,6 @@
 # ARCHITECTURE.md
 
-Last updated: 2026-03-29
+Last updated: 2026-03-30
 
 ## 1) Scope
 
@@ -30,6 +30,9 @@ User or CI
   Agent graph/state orchestration.
 - `strix/tools/`:
   Tool registration, action handlers, and runtime adapters.
+  - Agent graph lifecycle detail: `create_agent` registers the new subagent in
+    `_running_agents` before calling `thread.start()` so fast-finishing worker
+    threads cannot leave stale running entries.
 - `strix/runtime/`:
   Runtime abstraction and Docker runtime implementation.
 - `strix/config/`:

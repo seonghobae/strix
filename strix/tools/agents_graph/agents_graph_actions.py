@@ -256,8 +256,8 @@ def create_agent(
             daemon=True,
             name=f"Agent-{name}-{state.agent_id}",
         )
-        thread.start()
         _running_agents[state.agent_id] = thread
+        thread.start()
 
     except Exception as e:  # noqa: BLE001
         return {"success": False, "error": f"Failed to create agent: {e}", "agent_id": None}
