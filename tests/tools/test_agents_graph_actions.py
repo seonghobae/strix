@@ -1,6 +1,7 @@
 """Tests for agent graph actions and helpers."""
 
 import sys
+from collections.abc import Generator
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -47,7 +48,7 @@ class DummyState:
 
 
 @pytest.fixture(autouse=True)
-def reset_agent_graph_globals() -> None:
+def reset_agent_graph_globals() -> Generator[None, None, None]:
     """Reset all mutable global stores before each test."""
     aga._agent_graph["nodes"].clear()
     aga._agent_graph["edges"].clear()
@@ -369,7 +370,7 @@ def test_create_agent_defaults_and_exception(monkeypatch: pytest.MonkeyPatch) ->
             parent_id: str,
             max_iterations: int,
             waiting_timeout: int,
-        ):
+        ) -> None:
             self.task = task
             self.agent_name = agent_name
             self.parent_id = parent_id
@@ -379,8 +380,13 @@ def test_create_agent_defaults_and_exception(monkeypatch: pytest.MonkeyPatch) ->
 
     class FakeLLMConfig:
         def __init__(
-            self, skills: list[str], timeout: int | None, scan_mode: str, interactive: bool
-        ):
+            self,
+            skills: list[str],
+            timeout: int | None,
+            scan_mode: str,
+            *,
+            interactive: bool,
+        ) -> None:
             self.skills = skills
             self.timeout = timeout
             self.scan_mode = scan_mode
@@ -427,7 +433,7 @@ def test_create_agent_fast_completion_does_not_leave_stale_running_entry(
             parent_id: str,
             max_iterations: int,
             waiting_timeout: int,
-        ):
+        ) -> None:
             self.task = task
             self.agent_name = agent_name
             self.parent_id = parent_id
@@ -437,8 +443,13 @@ def test_create_agent_fast_completion_does_not_leave_stale_running_entry(
 
     class FakeLLMConfig:
         def __init__(
-            self, skills: list[str], timeout: int | None, scan_mode: str, interactive: bool
-        ):
+            self,
+            skills: list[str],
+            timeout: int | None,
+            scan_mode: str,
+            *,
+            interactive: bool,
+        ) -> None:
             self.skills = skills
             self.timeout = timeout
             self.scan_mode = scan_mode
@@ -451,7 +462,12 @@ def test_create_agent_fast_completion_does_not_leave_stale_running_entry(
 
     class InlineThread:
         def __init__(
-            self, target: object, args: tuple[object, ...], daemon: bool, name: str
+            self,
+            target: object,
+            args: tuple[object, ...],
+            *,
+            daemon: bool,
+            name: str,
         ) -> None:
             self.target = target
             self.args = args
@@ -756,7 +772,7 @@ def test_create_agent_success_without_parent_llm_attrs_and_no_inherit(
             parent_id: str,
             max_iterations: int,
             waiting_timeout: int,
-        ):
+        ) -> None:
             self.task = task
             self.agent_name = agent_name
             self.parent_id = parent_id
@@ -766,8 +782,13 @@ def test_create_agent_success_without_parent_llm_attrs_and_no_inherit(
 
     class FakeLLMConfig:
         def __init__(
-            self, skills: list[str], timeout: int | None, scan_mode: str, interactive: bool
-        ):
+            self,
+            skills: list[str],
+            timeout: int | None,
+            scan_mode: str,
+            *,
+            interactive: bool,
+        ) -> None:
             self.skills = skills
             self.timeout = timeout
             self.scan_mode = scan_mode
@@ -782,7 +803,12 @@ def test_create_agent_success_without_parent_llm_attrs_and_no_inherit(
 
     class FakeThread:
         def __init__(
-            self, target: object, args: tuple[object, ...], daemon: bool, name: str
+            self,
+            target: object,
+            args: tuple[object, ...],
+            *,
+            daemon: bool,
+            name: str,
         ) -> None:
             self.target = target
             self.args = args
