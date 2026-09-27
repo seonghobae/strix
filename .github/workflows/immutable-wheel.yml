@@ -1,0 +1,100 @@
+name: Native root wait wheel build
+on:
+  push:
+    branches: [build-root-wait]
+permissions:
+  contents: read
+jobs:
+  build:
+    if: github.repository == 'seonghobae/strix'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      POETRY_VIRTUALENVS_IN_PROJECT: 'true'
+      STRIX_SANDBOX_MODE: 'false'
+      STRIX_DISABLE_BROWSER: 'true'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: f60c2238c2550ff297df1c52738b83caa65c363a
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Configure owned build tools
+        run: printf 'UV_TOOL_DIR=%s/strix-build-tools\nUV_CACHE_DIR=%s/strix-build-cache\n' "$RUNNER_TEMP" "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9
+        with:
+          version: '0.12.3'
+          python-version: '3.12.13'
+          enable-cache: false
+      - name: Install native locked dependencies
+        run: |
+          test "$(git rev-parse HEAD)" = f60c2238c2550ff297df1c52738b83caa65c363a
+          test ! -e .venv
+          uv venv --python 3.12.13 .venv
+          uv tool run --from poetry==2.3.2 poetry check --lock
+          uv tool run --from poetry==2.3.2 poetry install --with dev --no-root --no-interaction --no-ansi
+          git diff --exit-code -- pyproject.toml poetry.lock
+      - name: Verify registered native source regression
+        run: timeout 120s .venv/bin/python -m pytest tests/tools/test_root_idle_wait.py -q -s --junitxml="$RUNNER_TEMP/strix-source-junit.xml"
+      - name: Build and install native wheel
+        run: |
+          uv tool run --from poetry==2.3.2 poetry build --format wheel --no-interaction --no-ansi
+          test "$(find dist -maxdepth 1 -name '*.whl' | wc -l)" -eq 1
+          uv pip install --python .venv/bin/python --no-deps dist/*.whl
+          mkdir -p "$RUNNER_TEMP/strix-wheel-check"
+          cp tests/tools/test_root_idle_wait.py "$RUNNER_TEMP/strix-wheel-check/"
+      - name: Verify installed native wheel outside source
+        working-directory: ${{ runner.temp }}/strix-wheel-check
+        run: |
+          env -u PYTHONPATH PYTHONSAFEPATH=1 "$GITHUB_WORKSPACE/.venv/bin/python" -P - <<'PY'
+          import hashlib, importlib.metadata, os, pathlib, sys
+          from strix.config import Config
+          root = pathlib.Path(os.environ['GITHUB_WORKSPACE']).resolve()
+          assert root not in [pathlib.Path(p).resolve() for p in sys.path if p]
+          assert pathlib.Path(sys.modules[Config.__module__].__file__).resolve().is_relative_to(root / '.venv')
+          package = importlib.metadata.distribution('strix-agent')
+          assert package.version == '0.8.3'
+          for path in ('strix/tools/agents_graph/agents_graph_actions.py', 'strix/tools/agents_graph/agents_graph_actions_schema.xml', 'strix/config/config.py', 'strix/interface/main.py'):
+              assert hashlib.sha256(package.locate_file(path).read_bytes()).digest() == hashlib.sha256((root / path).read_bytes()).digest()
+          PY
+          timeout 120s env -u PYTHONPATH PYTHONSAFEPATH=1 "$GITHUB_WORKSPACE/.venv/bin/python" -P -m pytest test_root_idle_wait.py -c "$GITHUB_WORKSPACE/pyproject.toml" --import-mode=importlib -q -s --junitxml="$RUNNER_TEMP/strix-installed-junit.xml"
+      - name: Bind native wheel provenance
+        run: |
+          .venv/bin/python - <<'PY'
+          import email, hashlib, importlib.metadata, json, os, pathlib, platform, subprocess, zipfile, xml.etree.ElementTree as ET
+          root = pathlib.Path.cwd()
+          wheel, = pathlib.Path('dist').glob('*.whl')
+          digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+          with zipfile.ZipFile(wheel) as archive:
+              metadata_path, = [p for p in archive.namelist() if p.endswith('.dist-info/METADATA')]
+              metadata_bytes = archive.read(metadata_path)
+              metadata = email.message_from_bytes(metadata_bytes)
+              assert metadata['Name'] == 'strix-agent' and metadata['Version'] == '0.8.3'
+              package_hashes = {}
+              for path in archive.namelist():
+                  if path.startswith('strix/') and not path.endswith('/'):
+                      assert archive.read(path) == (root / path).read_bytes()
+                      package_hashes[path] = digest(root / path)
+          regressions = {}
+          for kind in ('source', 'installed'):
+              suites = ET.parse(pathlib.Path(os.environ['RUNNER_TEMP']) / f'strix-{kind}-junit.xml').getroot().findall('.//testsuite')
+              counts = {key: sum(int(s.attrib[key]) for s in suites) for key in ('tests', 'failures', 'errors', 'skipped')}
+              assert counts == {'tests': 12, 'failures': 0, 'errors': 0, 'skipped': 0}
+              regressions[kind] = counts
+          for path in ('pyproject.toml', 'poetry.lock', 'containers/Dockerfile', 'strix/config/config.py', 'strix/interface/main.py', 'strix/tools/agents_graph/agents_graph_actions_schema.xml'):
+              assert subprocess.check_output(['git', 'show', '7d5a45deaf30a7d0169138be29fc81a7ea42cb02:' + path]) == (root / path).read_bytes()
+          proof = {'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(), 'official_base': '7d5a45deaf30a7d0169138be29fc81a7ea42cb02', 'package': metadata['Name'], 'version': metadata['Version'], 'requires_python': metadata['Requires-Python'], 'requires_dist': sorted(metadata.get_all('Requires-Dist', [])), 'python': platform.python_version(), 'uv': subprocess.check_output(['uv', '--version'], text=True).strip(), 'poetry': subprocess.check_output(['uv', 'tool', 'run', '--from', 'poetry==2.3.2', 'poetry', '--version'], text=True).strip(), 'pyproject_sha256': digest(root / 'pyproject.toml'), 'lock_sha256': digest(root / 'poetry.lock'), 'dockerfile_sha256': digest(root / 'containers/Dockerfile'), 'test_sha256': digest(root / 'tests/tools/test_root_idle_wait.py'), 'wheel_sha256': digest(wheel), 'metadata_sha256': hashlib.sha256(metadata_bytes).hexdigest(), 'package_files': package_hashes, 'installed_dependencies': sorted((d.metadata['Name'], d.version) for d in importlib.metadata.distributions()), 'source_and_installed_regression': regressions, 'workflow_commit': os.environ['GITHUB_SHA'], 'run_id': os.environ['GITHUB_RUN_ID'], 'attempt': os.environ['GITHUB_RUN_ATTEMPT'], 'consumer_runtime_parity_proven': False, 'paid_scan_executed': False}
+          assert proof['source_commit'] == 'f60c2238c2550ff297df1c52738b83caa65c363a'
+          assert proof['python'] == '3.12.13'
+          assert proof['package_files']['strix/tools/agents_graph/agents_graph_actions.py'] == 'f1169204e9f350a4e9c3d6923c65c42786b287f0971c412ba06c8efc595247d7'
+          assert proof['test_sha256'] == '7d3b4067351913b8d3b457e40dbab4f8e5a3dd32a5ec811ccc566140ab528e6d'
+          pathlib.Path('dist/provenance.json').write_text(json.dumps(proof, indent=2) + '\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: strix-root-wait-f60c223-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            dist/*.whl
+            dist/provenance.json
+          if-no-files-found: error
+          retention-days: 7
