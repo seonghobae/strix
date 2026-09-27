@@ -576,6 +576,27 @@ def wait_for_message(
     try:
         agent_id = agent_state.agent_id
         agent_name = agent_state.agent_name
+        node = _agent_graph["nodes"].get(agent_id)
+        instance = _agent_instances.get(agent_id)
+        messages = _agent_messages.get(agent_id)
+        if (
+            agent_id == _root_agent_id
+            and set(_agent_graph["nodes"]) == {agent_id}
+            and node is not None
+            and "parent_id" in node
+            and node["parent_id"] is None
+            and getattr(agent_state, "parent_id", False) is None
+            and getattr(instance, "state", None) is agent_state
+            and getattr(instance, "interactive", None) is False
+            and isinstance(messages, list)
+            and all(isinstance(message, dict) and message.get("read") is True for message in messages)
+        ):
+            return {
+                "success": False,
+                "status": "error",
+                "error": "No other agent can send a message in this non-interactive scan. "
+                "Continue your work; call finish_scan only when the scan is complete.",
+            }
 
         agent_state.enter_waiting_state()
 
